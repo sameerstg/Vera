@@ -3,14 +3,12 @@
 --- !u!78 &1
 TagManager:
   serializedVersion: 2
-  tags:
-  - BlueGoal
-  - RedGoal
+  tags: []
   layers:
   - Default
   - TransparentFX
   - Ignore Raycast
-  - ARDk_MockWorld
+  - ARDK_MockWorld
   - Water
   - UI
   - 

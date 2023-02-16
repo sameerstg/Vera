@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
@@ -61,7 +61,7 @@ namespace Niantic.ARDK.VirtualStudio
 
     internal MockPlayer
     (
-      _IVirtualStudioSessionsManager virtualStudioSessionsManager,
+      _IVirtualStudioManager virtualStudioMaster,
       MockArdkPlayerProfile playerProfile = null
     )
     {
@@ -73,7 +73,7 @@ namespace Niantic.ARDK.VirtualStudio
       }
       else
       {
-        _playerName = _VirtualStudioSessionsManager.LOCAL_PLAYER_NAME;
+        _playerName = _VirtualStudioManager.LOCAL_PLAYER_NAME;
         IsLocal = true;
       }
 

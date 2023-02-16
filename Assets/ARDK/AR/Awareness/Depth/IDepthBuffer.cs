@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
@@ -9,7 +9,7 @@ namespace Niantic.ARDK.AR.Awareness.Depth
   // The value of position [x, y] in the Data buffer equals how many meters away
   // from the camera the surface in that pixel is, clamped to the range of NearDistance
   // to FarDistance.
-  public interface IDepthBuffer: IDataBufferFloat32
+  public interface IDepthBuffer: IDataBuffer<float>, IDisposable
   {
     /// The minimum distance from the camera (in meters) captured by this depth buffer.
     /// Depths closer in will be assigned this distance.
@@ -18,6 +18,32 @@ namespace Niantic.ARDK.AR.Awareness.Depth
     /// The maximum distance from the camera (in meters) captured by this depth buffer.
     /// Depths farther out will be assigned this distance.
     float FarDistance { get; }
+
+    /// Update (or create, if needed) a texture with this depth buffer's data.
+    /// @param texture
+    ///   Reference to the texture to copy to. This method will create a texture if the reference
+    ///   is null.
+    /// @param valueConverter
+    ///   Defines a function to perform additional processing on the values before pushing
+    ///   to the GPU. This is usually used to normalize values for ARGB32 textures.
+    /// @returns True if the buffer was successfully copied to the given texture.
+    bool CreateOrUpdateTextureARGB32
+    (
+      ref Texture2D texture,
+      FilterMode filterMode = FilterMode.Point,
+      Func<float, float> valueConverter = null
+    );
+
+    /// Update (or create, if needed) a texture with this depth buffer's data.
+    /// @param texture
+    ///   Reference to the texture to copy to. This method will create a texture if the reference
+    ///   is null.
+    /// @returns True if the buffer was successfully copied to the given texture.
+    bool CreateOrUpdateTextureRFloat
+    (
+      ref Texture2D texture,
+      FilterMode filterMode = FilterMode.Point
+    );
 
     /// Rotates the depth buffer so it is oriented to the screen.
     /// @note
@@ -77,5 +103,23 @@ namespace Niantic.ARDK.AR.Awareness.Depth
       int viewportWidth,
       int viewportHeight
     );
+
+    /// Returns the nearest value to the specified normalized coordinates in the buffer.
+    /// @param uv
+    ///   Normalized coordinates.
+    /// @returns
+    ///   The value in the depth buffer at the nearest location to the coordinates.
+    float Sample(Vector2 uv);
+
+    /// Returns the nearest value to the specified normalized coordinates in the buffer.
+    /// @param uv
+    ///   Normalized coordinates.
+    /// @param transform
+    ///   2D transformation applied to normalized coordinates before sampling.
+    ///   This transformation should convert to the depth buffer's coordinate frame.
+    /// @returns
+    ///   The value in the depth buffer at the nearest location to the
+    ///   transformed coordinates.
+    float Sample(Vector2 uv, Matrix4x4 transform);
   }
 }

@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,6 @@ using Niantic.ARDK.AR.Frame;
 using Niantic.ARDK.AR.Mesh;
 using Niantic.ARDK.AR.SLAM;
 using Niantic.ARDK.Networking;
-using Niantic.ARDK.Utilities.Extensions;
 using Niantic.ARDK.Utilities.Logging;
 using Niantic.ARDK.VirtualStudio.Remote.Data;
 
@@ -27,13 +26,12 @@ namespace Niantic.ARDK.VirtualStudio.Remote
 
     public IARSession InnerARSession
     {
-      get => _session;
+      get { return _session; }
     }
 
     private readonly int _imageCompressionQuality;
     private readonly float _targetImageFrameDelta;
     private readonly float _targetAwarenessFrameDelta;
-    private readonly float _targetFeaturePointFrameDelta;
     private Dictionary<Guid, IARAnchor> _addedAnchors = new Dictionary<Guid, IARAnchor>();
 
     internal _RemoteDeviceARSessionHandler
@@ -41,8 +39,7 @@ namespace Niantic.ARDK.VirtualStudio.Remote
       Guid stageIdentifier,
       int imageCompressionQuality,
       int targetImageFramerate,
-      int targetAwarenessFramerate,
-      int targetFeaturePointFramerate
+      int targetAwarenessFramerate
     )
     {
       _session = ARSessionFactory.Create(stageIdentifier);
@@ -50,8 +47,7 @@ namespace Niantic.ARDK.VirtualStudio.Remote
       _imageCompressionQuality = imageCompressionQuality;
       _targetImageFrameDelta = 1.0f / targetImageFramerate;
       _targetAwarenessFrameDelta = 1.0f / targetAwarenessFramerate;
-      _targetFeaturePointFrameDelta = 1.0f / targetFeaturePointFramerate;
-      
+
       _EasyConnection.Register<ARSessionRunMessage>(HandleRunMessage);
       _EasyConnection.Register<ARSessionPauseMessage>(HandlePauseMessage);
       _EasyConnection.Register<ARSessionAddAnchorMessage>(HandleAddAnchorMessage);
@@ -116,18 +112,14 @@ namespace Niantic.ARDK.VirtualStudio.Remote
 
     private static float _lastImageCaptureTime;
     private static float _lastAwarenessCaptureTime;
-    private static float _lastPointCloudCaptureTime;
-    
     private void OnFrameUpdated(FrameUpdatedArgs args)
     {
       var frame = args.Frame;
 
       var includeImageBuffers = false;
       var includeAwarenessBuffers = false;
-      var includeFeaturePoints = false;
-
       var unscaledTime = Time.unscaledTime;
-      
+
       if ((unscaledTime - _lastImageCaptureTime) > _targetImageFrameDelta)
       {
         includeImageBuffers = true;
@@ -139,36 +131,45 @@ namespace Niantic.ARDK.VirtualStudio.Remote
         includeAwarenessBuffers = true;
         _lastAwarenessCaptureTime = unscaledTime;
       }
-
-      if ((unscaledTime - _lastPointCloudCaptureTime) > _targetFeaturePointFrameDelta)
-      {
-        includeFeaturePoints = true;
-        _lastPointCloudCaptureTime = unscaledTime;
-      }
-
+      
+      //TODO: AR-8359 remove the serialize as soon as possible. This warning disabling is temporary.
+#pragma warning disable CS0618
+      var serializedFrame =
+        frame.Serialize
+        (
+          includeImageBuffers,
+          includeAwarenessBuffers,
+          _imageCompressionQuality
+        );
+#pragma warning restore CS0618
+      
       // Todo: Should be sending UnreliableOrdered, but Unreliable protocols won’t deliver any
       // message if payload size is ~1.8KB or more.
       _EasyConnection.Send
       (
-        new ARSessionFrameUpdatedMessage
-        { 
-          Frame = frame._AsSerializable
-          ( 
-            includeImageBuffers: includeImageBuffers,
-            includeAwarenessBuffers: includeAwarenessBuffers,
-            compressionLevel: _imageCompressionQuality,
-            includeFeaturePoints: includeFeaturePoints
-          )
-        },
-#pragma warning disable 612, 618 
+        new ARSessionFrameUpdatedMessage{ Frame = serializedFrame._AsSerializable() },
         TransportType.ReliableUnordered
-#pragma warning restore 612, 618 
       );
     }
 
     private static void OnAnchorsAdded(AnchorsArgs args)
     {
-      var anchors = AnchorExtensions.ClassifyAsSerializableAnchors(args.Anchors);
+      var anchors = args.Anchors;
+      var anchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Base
+        select anchor._AsSerializableBase()).ToArray();
+
+      var planeAnchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Plane
+        select ((IARPlaneAnchor)anchor)._AsSerializablePlane()).ToArray();
+
+      var imageAnchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Image
+        select ((IARImageAnchor)anchor)._AsSerializableImage()).ToArray();
+
 
       // TODO: We could just serialize everything in a single array.
       // The serializer knows what to do!
@@ -176,43 +177,72 @@ namespace Niantic.ARDK.VirtualStudio.Remote
       (
         new ARSessionAnchorsAddedMessage
         {
-          Anchors = anchors.BasicAnchors.ToArray(),
-          PlaneAnchors = anchors.PlaneAnchors.ToArray(),
-          ImageAnchors = anchors.ImageAnchors.ToArray(),
+          Anchors = anchorArray,
+          PlaneAnchors = planeAnchorArray,
+          ImageAnchors = imageAnchorArray
         }
       );
     }
 
     private static void OnAnchorsUpdated(AnchorsArgs args)
     {
-      var anchors = AnchorExtensions.ClassifyAsSerializableAnchors(args.Anchors);
-      
+      var anchors = args.Anchors;
+      var anchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Base
+        select anchor._AsSerializableBase()).ToArray();
+
+      var planeAnchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Plane
+        select ((IARPlaneAnchor)anchor)._AsSerializablePlane()).ToArray();
+
+      var imageAnchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Image
+        select ((IARImageAnchor)anchor)._AsSerializableImage()).ToArray();
+
+
       _EasyConnection.Send
       (
         new ARSessionAnchorsUpdatedMessage
         {
-          Anchors = anchors.BasicAnchors.ToArray(),
-          PlaneAnchors = anchors.PlaneAnchors.ToArray(),
-          ImageAnchors = anchors.ImageAnchors.ToArray(),
+          Anchors = anchorArray,
+          PlaneAnchors = planeAnchorArray,
+          ImageAnchors = imageAnchorArray
         }
       );
     }
 
     private static void OnAnchorsRemoved(AnchorsArgs args)
     {
-      var anchors = AnchorExtensions.ClassifyAsSerializableAnchors(args.Anchors);
+      var anchors = args.Anchors;
+      var anchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Base
+        select anchor._AsSerializableBase()).ToArray();
+
+      var planeAnchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Plane
+        select ((IARPlaneAnchor)anchor)._AsSerializablePlane()).ToArray();
+
+      var imageAnchorArray = (
+        from anchor in anchors
+        where anchor.AnchorType == AnchorType.Image
+        select ((IARImageAnchor)anchor)._AsSerializableImage()).ToArray();
 
       _EasyConnection.Send
       (
         new ARSessionAnchorsRemovedMessage
         {
-          Anchors = anchors.BasicAnchors.ToArray(),
-          PlaneAnchors = anchors.PlaneAnchors.ToArray(),
-          ImageAnchors = anchors.ImageAnchors.ToArray(),
+          Anchors = anchorArray,
+          PlaneAnchors = planeAnchorArray,
+          ImageAnchors = imageAnchorArray
         }
       );
     }
-    
+
     private static void OnAnchorsMerged(AnchorsMergedArgs args)
     {
       var parentQuery = ((IARPlaneAnchor)args.Parent)._AsSerializablePlane();

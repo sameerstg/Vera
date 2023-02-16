@@ -1,4 +1,3 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
 using Niantic.ARDK.Utilities;
 
 using UnityEngine;
@@ -7,6 +6,7 @@ using UnityEngine.Rendering;
 namespace Niantic.ARDK.Rendering
 {
   /// Arguments for rendering events.
+  /// @note This will be renamed to FrameRendererArgs in a future update
   public class FrameRenderedArgs: 
     IArdkEventArgs
   {
@@ -21,9 +21,6 @@ namespace Niantic.ARDK.Rendering
 
   public interface IARFrameRenderer
   {
-    /// Event for when the renderer had just initialized.
-    event ArdkEventHandler<FrameRenderedArgs> Initialized;
-    
     /// Event for when the renderer had just finished rendering to its primary target. 
     event ArdkEventHandler<FrameRenderedArgs> FrameRendered;
 

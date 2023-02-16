@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using Niantic.ARDK.AR;
 using Niantic.ARDK.AR.ARSessionEventArgs;
@@ -51,83 +51,55 @@ namespace Niantic.ARDK.Extensions
     private ARSessionManager _arSessionManager;
     private NetworkSessionManager _networkSessionManager;
 
+    // Because the Initialized event is raised before ARSessionManager and NetworkSessionManager
+    // are set their ARSession and MultipeerNetworking references, respectively, we have to keep
+    // a reference here to use them to create the ARNetworking.
+    private IARSession _arSession;
+    private IMultipeerNetworking _networking;
+
     private bool _shouldBeRunning;
     private bool _needToRecreate;
 
-    /// @warning
-    ///   Underlying object will change if this component is enabled (connected), disabled (disconnected),
-    ///   and then connected again (reconnected). If subscribing to IARNetworking events,
-    ///   you should listen to the ARNetworkingFactory.ARNetworkingInitialized event
-    ///   and add your IARNetworking event subscriptions to the latest initialized networking object.
     public IARNetworking ARNetworking
     {
       get { return _arNetworking; }
     }
 
-    public ARSessionManager ARSessionManager => _arSessionManager;
+    public ARSessionManager ARSessionManager
+    {
+      get { return _arSessionManager; }
+    }
 
-    public NetworkSessionManager NetworkSessionManager => _networkSessionManager;
+    public NetworkSessionManager NetworkSessionManager
+    {
+      get { return _networkSessionManager; }
+    }
 
-    protected override bool _CanReinitialize => true;
+    protected override bool _CanReinitialize
+    {
+      get { return true; }
+    }
 
     protected override void InitializeImpl()
     {
       base.InitializeImpl();
 
-      ARSessionFactory.SessionInitialized += CreateOnARSessionInitialized;
+      ARSessionFactory.SessionInitialized += OnARSessionInitialized;
+      MultipeerNetworkingFactory.NetworkingInitialized += OnNetworkingInitialized;
 
       _arSessionManager = GetComponent<ARSessionManager>();
       _arSessionManager.Initialize();
 
       _networkSessionManager = GetComponent<NetworkSessionManager>();
-    }
-
-    private void CreateARNetworking(IARSession session) {
-      _arNetworking = ARNetworkingFactory.Create(session, _networkSessionManager.Networking);
-
-      ARLog._DebugFormat
-      (
-        "Created {0} ARNetworking: {1}.",
-        false,
-        _arNetworking.ARSession.RuntimeEnvironment,
-        _arNetworking.ARSession.StageIdentifier
-      );
-
-      // Networking is recreated when it disconnects and reconnects, so the ARNetworking must
-      // be recreated too.
-      _arNetworking.Networking.Connected += _ => _needToRecreate = true;
-
-      // Just in case the dev disposes the ARNetworking themselves instead of through this manager
-      _arNetworking.Deinitialized +=
-        _ =>
-        {
-          _arNetworking = null;
-          _needToRecreate = false;
-        };
-    }
-
-    private void CreateOnARSessionInitialized(AnyARSessionInitializedArgs args)
-    {
-      var arSession = args.Session;
-
-      if (_arNetworking != null)
-      {
-        ARLog._Error("Failed to create an ARNetworking session because one already exists.");
-        return;
-      }
-
-      _networkSessionManager._InitializeWithIdentifier(arSession.StageIdentifier);
-      CreateARNetworking(arSession);
-
-      if (_shouldBeRunning)
-        EnableSessionManagers();
+      _networkSessionManager.Initialize();
     }
 
     protected override void DeinitializeImpl()
     {
       base.DeinitializeImpl();
 
-      ARSessionFactory.SessionInitialized -= CreateOnARSessionInitialized;
+      ARSessionFactory.SessionInitialized -= OnARSessionInitialized;
+      MultipeerNetworkingFactory.NetworkingInitialized -= OnNetworkingInitialized;
 
       if (_arNetworking == null)
         return;
@@ -139,8 +111,42 @@ namespace Niantic.ARDK.Extensions
       _networkSessionManager.Deinitialize();
     }
 
+    private void OnARSessionInitialized(AnyARSessionInitializedArgs args)
+    {
+      _arSession = args.Session;
+      _arSession.Deinitialized += (_) => _arSession = null;
+
+      if (_arNetworking == null && NetworkSessionManager.Networking != null)
+      {
+        Create();
+
+        if (_shouldBeRunning)
+          EnableSessionManagers();
+      }
+    }
+
+    private void OnNetworkingInitialized(AnyMultipeerNetworkingInitializedArgs args)
+    {
+      _networking = args.Networking;
+      _networking.Deinitialized += (_) => _networking = null;
+
+      if (_arNetworking == null && ARSessionManager.ARSession != null)
+      {
+        Create();
+
+        if (_shouldBeRunning)
+          EnableSessionManagers();
+      }
+    }
+
     protected override void EnableFeaturesImpl()
     {
+      base.EnableFeaturesImpl();
+
+      _shouldBeRunning = true;
+
+      RaiseConfigurationChanged();
+
       // A networking, once left, is useless because it cannot be used to join/re-join a session.
       // So _arNetworking.Networking will be destroyed by the NetworkSessionManager.DisableFeatures
       // call, meaning if this component is enabled again, a new ARNetworking instance has to be
@@ -151,16 +157,7 @@ namespace Niantic.ARDK.Extensions
         _arNetworking = null;
       }
 
-      // Call base here so the backup Initialize call creates the new objects
-      base.EnableFeaturesImpl();
-
-      _shouldBeRunning = true;
-
-      if (ARSessionManager.ARSession != null) {
-        EnableSessionManagers();
-        if (_arNetworking == null)
-          CreateARNetworking(ARSessionManager.ARSession);
-      }
+      EnableSessionManagers();
     }
 
     protected override void DisableFeaturesImpl()
@@ -171,6 +168,29 @@ namespace Niantic.ARDK.Extensions
 
       _arSessionManager.DisableFeatures();
       _networkSessionManager.DisableFeatures();
+    }
+
+    private void Create()
+    {
+      if (_arNetworking != null)
+      {
+        ARLog._Error("Failed to create an ARNetworking session because one already exists.");
+        return;
+      }
+
+      // If the component was re-enabled, a new networking reference will have been set but
+      // not a new ARSession reference, since the same ARSession is still being used.
+      _arNetworking = ARNetworkingFactory.Create(_arSession ?? ARSessionManager.ARSession, _networking);
+
+      _arNetworking.Networking.Connected += _ => _needToRecreate = true;
+
+      // Just in case the dev disposes the ARNetworking themselves instead of through this manager
+      _arNetworking.Deinitialized +=
+        _ =>
+        {
+          _arNetworking = null;
+          _needToRecreate = false;
+        };
     }
 
     private void EnableSessionManagers()
@@ -185,7 +205,9 @@ namespace Niantic.ARDK.Extensions
     )
     {
       if (properties.ARConfiguration is IARWorldTrackingConfiguration worldConfig)
+      {
         worldConfig.IsSharedExperienceEnabled = AreFeaturesEnabled;
+      }
     }
   }
 }

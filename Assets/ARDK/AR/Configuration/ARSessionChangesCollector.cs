@@ -1,12 +1,10 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
 using Niantic.ARDK.Extensions;
 using Niantic.ARDK.Utilities;
 using Niantic.ARDK.Utilities.Logging;
-using Niantic.ARDK.VirtualStudio;
-using Niantic.ARDK.VirtualStudio.AR.Configuration;
 
 namespace Niantic.ARDK.AR.Configuration
 {
@@ -51,21 +49,10 @@ namespace Niantic.ARDK.AR.Configuration
 
     internal void _CollectChanges(IARConfiguration arConfiguration, ref ARSessionRunOptions runOptions)
     {
-      // Have to do this check here because _NativeARSessionTest runs without ardk binaries
-      // TODO (AR-12091): More general solution
-      RuntimeEnvironment runtimeEnvironment;
-      if (arConfiguration is _PlaybackARWorldTrackingConfiguration)
-        runtimeEnvironment = RuntimeEnvironment.Playback;
-      else if (arConfiguration is _NativeARConfiguration)
-        runtimeEnvironment = RuntimeEnvironment.LiveDevice;
-      else
-        runtimeEnvironment = RuntimeEnvironment.Mock;
-
-      _preChangeConfiguration = ARWorldTrackingConfigurationFactory.Create(runtimeEnvironment);
+      _preChangeConfiguration = ARWorldTrackingConfigurationFactory.Create();
       arConfiguration.CopyTo(_preChangeConfiguration);
-      
+
       var properties = new ARSessionRunProperties(arConfiguration, runOptions);
-      
       _configChangesRequested?.Invoke(properties);
 
       runOptions = properties.RunOptions;

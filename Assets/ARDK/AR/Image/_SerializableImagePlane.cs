@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Runtime.InteropServices;
@@ -20,7 +20,7 @@ namespace Niantic.ARDK.AR.Image
     internal _SerializableImagePlane
     (
       NativeArray<byte> data,
-      AtomicSafetyHandle dataSafetyHandle,
+      AtomicSafetyHandle dataHandle,
       int pixelWidth,
       int pixelHeight,
       int bytesPerRow,
@@ -28,7 +28,7 @@ namespace Niantic.ARDK.AR.Image
     )
     : this(data,pixelWidth, pixelHeight, bytesPerRow, bytesPerPixel)
     {
-      _dataSafetyHandle = dataSafetyHandle;
+      _dataHandle = dataHandle;
     }
 #endif
 
@@ -76,17 +76,21 @@ namespace Niantic.ARDK.AR.Image
 #if UNITY_EDITOR
     // Value depends on whether compression was used when serializing the original device frame
     // to send over RemoteConnection.
-    private readonly AtomicSafetyHandle? _dataSafetyHandle;
+    private readonly AtomicSafetyHandle? _dataHandle;
 #endif
 
-    public void Dispose()
+    // This method is internal because it is the _SerializableImageBuffer that's supposed to call
+    // it. Users do not need to Dispose() instances of this class.
+    internal void _Dispose()
     {
 #if UNITY_EDITOR
-      if (_dataSafetyHandle.HasValue)
-        AtomicSafetyHandle.Release(_dataSafetyHandle.Value);
-#endif
-
+      if (_dataHandle.HasValue)
+        AtomicSafetyHandle.Release(_dataHandle.Value);
+      else
+        Data.Dispose();
+#else
       Data.Dispose();
+#endif
     }
   }
 }

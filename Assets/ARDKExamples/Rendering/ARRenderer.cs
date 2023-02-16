@@ -1,5 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
-using System;
+﻿using System;
 
 using Niantic.ARDK;
 using Niantic.ARDK.AR;
@@ -50,7 +49,14 @@ namespace Niantic.ARDKExamples.Rendering
     /// Renders the current frame.  This should be called from LateUpdate.
     public void RenderFrame()
     {
-      _renderer?.UpdateState(withFrame: _session?.CurrentFrame);
+      if (_renderer == null)
+        return;
+
+      var frame = _session?.CurrentFrame;
+      if (frame == null)
+        return;
+
+      _renderer.UpdateState(frame);
     }
 
     private void ARSessionFactory_SessionInitialized(AnyARSessionInitializedArgs args)
@@ -91,8 +97,8 @@ namespace Niantic.ARDKExamples.Rendering
 
       var result = ARFrameRendererFactory.Create
       (
-        target: renderTarget,
-        env: environment
+        renderTarget,
+        environment
       );
 
       if (result != null)

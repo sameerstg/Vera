@@ -1,4 +1,3 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
 namespace Niantic.ARDK.Extensions
 {
   internal static class _ExtensionsExecutionOrder

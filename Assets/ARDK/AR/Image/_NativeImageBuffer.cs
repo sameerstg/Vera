@@ -1,10 +1,9 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Runtime.InteropServices;
 
 using Niantic.ARDK.Internals;
-using Niantic.ARDK.Utilities;
 
 namespace Niantic.ARDK.AR.Image
 {
@@ -13,15 +12,13 @@ namespace Niantic.ARDK.AR.Image
   {
     static _NativeImageBuffer()
     {
-      _Platform.Init();
+      Platform.Init();
     }
 
     private readonly long _consumedUnmanagedMemory;
 
     public _NativeImageBuffer(IntPtr nativeHandle)
     {
-      _NativeAccess.AssertNativeAccessValid();
-
       if (nativeHandle == IntPtr.Zero)
         throw new ArgumentException("nativeHandle can't be Zero.", nameof(nativeHandle));
 
@@ -34,7 +31,8 @@ namespace Niantic.ARDK.AR.Image
 
     private static void _ReleaseImmediate(IntPtr nativeHandle)
     {
-      _NARImage_Release(nativeHandle);
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        _NARImage_Release(nativeHandle);
     }
 
     ~_NativeImageBuffer()
@@ -46,9 +44,6 @@ namespace Niantic.ARDK.AR.Image
     public void Dispose()
     {
       GC.SuppressFinalize(this);
-
-      if (Planes != null)
-        Planes.Dispose();
 
       var nativeHandle = _nativeHandle;
       if (nativeHandle != IntPtr.Zero)
@@ -72,7 +67,12 @@ namespace Niantic.ARDK.AR.Image
     {
       get
       {
-        return (ImageFormat)_NARImage_GetFormat(_nativeHandle);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          return (ImageFormat)_NARImage_GetFormat(_nativeHandle);
+
+        #pragma warning disable 0162
+        throw new IncorrectlyUsedNativeClassException();
+        #pragma warning restore 0162
       }
     }
 

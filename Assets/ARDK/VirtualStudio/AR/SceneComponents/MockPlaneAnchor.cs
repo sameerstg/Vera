@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections;
@@ -141,9 +141,7 @@ namespace Niantic.ARDK.VirtualStudio.AR.Mock
         ARLog._DebugFormat
         (
           "Plane anchor for {0} cannot be detected. If that is unintended, check" +
-          "that the active ARWorldTrackingConfiguration's PlaneDetection value is correct.",
-          false,
-          gameObject.name
+          "that the active ARWorldTrackingConfiguration's PlaneDetection value is correct."
         );
 
         enabled = false;

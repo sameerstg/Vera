@@ -1,7 +1,6 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 
 namespace Niantic.ARDK.AR.Configuration
@@ -26,7 +25,7 @@ namespace Niantic.ARDK.AR.Configuration
     /// Returns a collection of supported video formats by this configuration and device.
     /// @note iOS-only value.
     /// @note Not supported in Virtual Studio.
-    IReadOnlyCollection<IARVideoFormat> SupportedVideoFormats { get; }
+    ReadOnlyCollection<IARVideoFormat> SupportedVideoFormats { get; }
 
     /// A value specifying the options to use for the output video stream.
     /// @note This is an iOS-only value.

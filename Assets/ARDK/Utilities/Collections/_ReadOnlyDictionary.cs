@@ -1,4 +1,3 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
 // Public domain from: https://blogs.cuttingedge.it/steven/posts/2007/readonlydictionary/
 
 using System;

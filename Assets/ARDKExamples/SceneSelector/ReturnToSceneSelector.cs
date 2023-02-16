@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -29,13 +29,8 @@ public class ReturnToSceneSelector:
 
     if (hasInput && SceneManager.GetActiveScene().name != _sceneName)
     {
-      ReturnToScene();
+      Debug.Log("ARDK Examples: Returning to Scene Selector");
+      SceneManager.LoadScene(_sceneName);
     }
-  }
-
-  public void ReturnToScene()
-  {
-    Debug.Log("ARDK Examples: Returning to Scene Selector");
-    SceneManager.LoadScene(_sceneName);
   }
 }

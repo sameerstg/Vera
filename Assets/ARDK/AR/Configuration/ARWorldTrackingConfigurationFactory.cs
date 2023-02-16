@@ -1,10 +1,8 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
-using Niantic.ARDK.Utilities;
-using Niantic.ARDK.VirtualStudio;
-using Niantic.ARDK.VirtualStudio.AR.Configuration;
+using Niantic.ARDK.AR.Awareness.Depth.Generators;
 
 namespace Niantic.ARDK.AR.Configuration
 {
@@ -20,7 +18,7 @@ namespace Niantic.ARDK.AR.Configuration
       Action<ARHardwareCapability, ARSoftwareSupport> callback
     )
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
         _NativeARWorldTrackingConfiguration._CheckCapabilityAndSupport(callback);
       #pragma warning disable 0162
       else
@@ -32,7 +30,7 @@ namespace Niantic.ARDK.AR.Configuration
     /// @note Returns false when run in the Unity Editor.
     public static bool CheckLidarDepthSupport()
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
         return _NativeARWorldTrackingConfiguration._CheckLidarDepthSupport();
 
       #pragma warning disable 0162
@@ -44,7 +42,7 @@ namespace Niantic.ARDK.AR.Configuration
     /// @note Returns true when run in the Unity Editor.
     public static bool CheckDepthEstimationSupport()
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
         return _NativeARWorldTrackingConfiguration._CheckDepthEstimationSupport();
 
       #pragma warning disable 0162
@@ -56,7 +54,7 @@ namespace Niantic.ARDK.AR.Configuration
     /// @note Returns true when run in the Unity Editor.
     public static bool CheckDepthSupport()
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
         return _NativeARWorldTrackingConfiguration._CheckDepthSupport();
 
       #pragma warning disable 0162
@@ -68,7 +66,7 @@ namespace Niantic.ARDK.AR.Configuration
     /// @note Returns true when run in the Unity Editor.
     public static bool CheckSemanticSegmentationSupport()
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
         return _NativeARWorldTrackingConfiguration._CheckSemanticSegmentationSupport();
 
       #pragma warning disable 0162
@@ -80,7 +78,7 @@ namespace Niantic.ARDK.AR.Configuration
     /// @note Returns true when run in the Unity Editor.
     public static bool CheckMeshingSupport()
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
         return _NativeARWorldTrackingConfiguration._CheckMeshingSupport();
 
       #pragma warning disable 0162
@@ -91,32 +89,25 @@ namespace Niantic.ARDK.AR.Configuration
     /// Initializes a new instance of the ARWorldTrackingConfiguration class.
     public static IARWorldTrackingConfiguration Create()
     {
-      return Create(_VirtualStudioLauncher.SelectedMode);
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        return new _NativeARWorldTrackingConfiguration();
+
+      #pragma warning disable 0162
+      return new _SerializableARWorldTrackingConfiguration();
+      #pragma warning restore 0162
     }
 
-    /// Create an ARWorldTrackingConfiguration for the specified RuntimeEnvironment.
-    ///
-    /// @param env
-    ///
-    /// @returns The created configuration, or null if it was not possible to create a configuration.
-    public static IARWorldTrackingConfiguration Create(RuntimeEnvironment environment)
+    /// Initializes a new instance of the ARWorldTrackingConfiguration class.
+    /// @note this is an experimental feature
+    public static IARWorldTrackingConfiguration CreatePlaybackConfig()
     {
-      switch (environment)
-      {
-        case RuntimeEnvironment.LiveDevice:
-          return new _NativeARWorldTrackingConfiguration();
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+            // Enable playback
+            return new _NativeARWorldTrackingConfiguration(true);
 
-        case RuntimeEnvironment.Playback:
-          return new _PlaybackARWorldTrackingConfiguration();
-
-        case RuntimeEnvironment.Mock:
-          return new _SerializableARWorldTrackingConfiguration();
-        
-        case RuntimeEnvironment.Remote:
-          return new _SerializableARWorldTrackingConfiguration();
-      }
-
-      return null;
+      #pragma warning disable 0162
+        return new _SerializableARWorldTrackingConfiguration();
+      #pragma warning restore 0162
     }
   }
 }

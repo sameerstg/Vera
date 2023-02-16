@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections.Generic;
@@ -137,6 +137,8 @@ namespace Niantic.ARDK.Utilities.Logging
         return;
 
       var caller = _GetCallerFromStack(2);
+      if (!_IsFeatureEnabled(caller))
+        return;
 
       var str = String.Format(ARDK_LogMessage, caller, log);
       _logHandler.Release(str);
@@ -154,6 +156,8 @@ namespace Niantic.ARDK.Utilities.Logging
         return;
 
       var caller = _GetCallerFromStack(2);
+      if (!_IsFeatureEnabled(caller))
+        return;
 
       var logFormat = String.Format(log, objs);
       var str = String.Format(ARDK_LogMessage, caller, logFormat);

@@ -1,12 +1,15 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
+using Niantic.ARDK.AR.SLAM;
 using System;
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+
+using Niantic.ARDK.AR.Awareness.Depth.Generators;
 using Niantic.ARDK.AR.ReferenceImage;
 using Niantic.ARDK.Utilities.Collections;
 using Niantic.ARDK.Utilities.Logging;
 
+using UnityEngine;
 
 namespace Niantic.ARDK.AR.Configuration
 {
@@ -20,9 +23,11 @@ namespace Niantic.ARDK.AR.Configuration
 
     public bool IsSharedExperienceEnabled { get; set; }
 
-    public bool IsDepthEnabled { get; set; }
+    public MappingRole MappingRole { get; set; }
 
-    public bool IsDepthPointCloudEnabled { get; set; }
+    public MapLayerIdentifier MapLayerIdentifier { get; set; }
+
+    public bool IsDepthEnabled { get; set; }
 
     public uint DepthTargetFrameRate { get; set; }
 
@@ -33,87 +38,86 @@ namespace Niantic.ARDK.AR.Configuration
     public bool IsMeshingEnabled { get; set; }
 
     public uint MeshingTargetFrameRate { get; set; }
-    
-    [Obsolete("This property is obsolete. Use MeshDecimationThreshold instead.", false)]
-    public float MeshingRadius { 
-      get => MeshDecimationThreshold;
-      set { MeshDecimationThreshold = value; }
-    }
 
     public float MeshingTargetBlockSize { get; set; }
-    
-    public bool IsPalmDetectionEnabled { get; set; }
 
-    public float MeshDecimationThreshold
+    public float MeshingRadius
     {
-      get => _meshDecimationThreshold;
+      get { return _meshingRadius; }
       set
       {
-        if (value > 0 && value < MeshingRangeMax)
+        if (value > 0 && value < 5)
         {
           ARLog._Error
           (
-            "The smallest mesh decimation threshold possible is the maximum meshing range " +
-            "distance. Set the value to 0 for an infinite distance."
+            "The smallest meshing radius possible is 5 meters. " +
+            "Set the value to 0 for an infinite radius."
           );
 
           return;
         }
 
-        _meshDecimationThreshold = value;
+        _meshingRadius = value;
       }
     }
 
-    private float _meshDecimationThreshold;
-    
-    public float MeshingRangeMax
+    private float _meshingRadius;
+
+    private DepthPointCloudGenerator.Settings _depthPointCloudSettings;
+    public DepthPointCloudGenerator.Settings DepthPointCloudSettings
     {
-      get => _meshingRangeMax;
+      get
+      {
+        var result = _depthPointCloudSettings;
+
+        if (result == null)
+        {
+          result = new DepthPointCloudGenerator.Settings();
+          _depthPointCloudSettings = result;
+        }
+
+        return result;
+      }
       set
       {
-        if (value <= 0)
-        {
-          ARLog._Error
-          (
-            "The maximum meshing range must be larger then zero."
-          );
-
-          return;
-        }
-        
-        _meshingRangeMax = value;
+        _depthPointCloudSettings = value;
       }
     }
 
-    private float _meshingRangeMax = 5f;
-    
-    public float VoxelSize
+    private static bool _allowDetectionImagesForTesting = false;
+
+    internal static void SetAllowDetectionImagesForTesting(bool newState)
     {
-      get => _voxelSize;
-      set
-      {
-        if (value <= 0)
-        {
-          ARLog._Error
-          (
-            "The voxel size must be larger than 0."
-          );
-
-          return;
-        }
-        
-        _voxelSize = value;
-      }
+      _allowDetectionImagesForTesting = newState;
     }
-
-    private float _voxelSize = 0.025f;
 
     private IReadOnlyCollection<IARReferenceImage> _detectionImages =
       EmptyArdkReadOnlyCollection<IARReferenceImage>.Instance;
     public IReadOnlyCollection<IARReferenceImage> DetectionImages
     {
-      get => _detectionImages;
-      set => _detectionImages = value;
+      get
+      {
+        if (_allowDetectionImagesForTesting)
+        {
+          return _detectionImages;
+        }
+        else
+        {
+          ARLog._Warn("DetectionImages property is not supported in the Unity. Returning an empty collection.");
+          return EmptyArdkReadOnlyCollection<IARReferenceImage>.Instance;
+        }
+      }
+      set
+      {
+        if (_allowDetectionImagesForTesting)
+        {
+          _detectionImages = value;
+        }
+        else
+        {
+          throw new NotSupportedException();
+        }
+      }
     }
 
     public void SetDetectionImagesAsync
@@ -122,8 +126,15 @@ namespace Niantic.ARDK.AR.Configuration
       Action completionHandler
     )
     {
-      _detectionImages = detectionImages;
-      completionHandler();
+      if (_allowDetectionImagesForTesting)
+      {
+        _detectionImages = detectionImages;
+        completionHandler();
+      }
+      else
+      {
+        throw new NotSupportedException();
+      }
     }
 
     public override void CopyTo(IARConfiguration target)
@@ -142,10 +153,12 @@ namespace Niantic.ARDK.AR.Configuration
       worldTarget.IsAutoFocusEnabled = IsAutoFocusEnabled;
 
       worldTarget.IsSharedExperienceEnabled = IsSharedExperienceEnabled;
+      worldTarget.MappingRole = MappingRole;
+      worldTarget.MapLayerIdentifier = MapLayerIdentifier;
 
       worldTarget.IsDepthEnabled = IsDepthEnabled;
       worldTarget.DepthTargetFrameRate = DepthTargetFrameRate;
-      worldTarget.IsDepthPointCloudEnabled = IsDepthPointCloudEnabled;
+      worldTarget.DepthPointCloudSettings = DepthPointCloudSettings.Copy();
 
       worldTarget.IsSemanticSegmentationEnabled = IsSemanticSegmentationEnabled;
       worldTarget.SemanticTargetFrameRate = SemanticTargetFrameRate;
@@ -153,11 +166,7 @@ namespace Niantic.ARDK.AR.Configuration
       worldTarget.IsMeshingEnabled = IsMeshingEnabled;
       worldTarget.MeshingTargetFrameRate = MeshingTargetFrameRate;
       worldTarget.MeshingTargetBlockSize = MeshingTargetBlockSize;
-      worldTarget.MeshDecimationThreshold = MeshDecimationThreshold;
-      worldTarget.MeshingRangeMax = MeshingRangeMax;
-      worldTarget.VoxelSize = VoxelSize;
-
-      worldTarget.IsPalmDetectionEnabled = IsPalmDetectionEnabled;
+      worldTarget.MeshingRadius = MeshingRadius;
 
       // Not copying DetectionImages because ARReferenceImage is not supported in Editor.
     }

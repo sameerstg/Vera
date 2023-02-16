@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections.Generic;
@@ -7,7 +7,6 @@ using System.Linq;
 
 using Niantic.ARDK.AR;
 using Niantic.ARDK.AR.ARSessionEventArgs;
-using Niantic.ARDK.Utilities.Logging;
 
 using UnityEngine;
 
@@ -19,11 +18,11 @@ namespace Niantic.ARDK.VirtualStudio.AR
     private readonly Dictionary<Guid, IARSession> _stageIdentifierToSession =
       new Dictionary<Guid, IARSession>();
 
-    private readonly _IVirtualStudioSessionsManager _virtualStudioSessionsManager;
+    private _IVirtualStudioManager _virtualStudioManager;
 
-    public _MockARSessionMediator(_IVirtualStudioSessionsManager virtualStudioSessionsManager)
+    public _MockARSessionMediator(_IVirtualStudioManager virtualStudioMaster)
     {
-      _virtualStudioSessionsManager = virtualStudioSessionsManager;
+      _virtualStudioManager = virtualStudioMaster;
 
       ARSessionFactory.SessionInitialized += HandleAnyInitialized;
       ARSessionFactory._NonLocalSessionInitialized += HandleAnyInitialized;
@@ -32,7 +31,7 @@ namespace Niantic.ARDK.VirtualStudio.AR
     ~_MockARSessionMediator()
     {
       // This class has no unmanaged data, so no need to have a Dispose(false) call.
-      ARLog._Error("_MockARSessionMediator should be destroyed by calling Dispose().");
+      Debug.LogError("EditorARSessionMediator should be destroyed by calling Dispose().");
     }
 
     public void Dispose()
@@ -54,7 +53,7 @@ namespace Niantic.ARDK.VirtualStudio.AR
           runtimeEnvironment,
           stageIdentifier,
           isLocal: false,
-          _virtualStudioSessionsManager
+          _virtualStudioManager
         );
     }
 

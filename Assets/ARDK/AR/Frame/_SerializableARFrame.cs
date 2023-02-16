@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections.Generic;
@@ -13,7 +13,6 @@ using Niantic.ARDK.AR.Awareness.Semantics;
 using Niantic.ARDK.AR.HitTest;
 using Niantic.ARDK.AR.Image;
 using Niantic.ARDK.AR.LightEstimate;
-using Niantic.ARDK.AR.PointCloud;
 using Niantic.ARDK.AR.SLAM;
 using Niantic.ARDK.VirtualStudio.AR;
 using Niantic.ARDK.Utilities;
@@ -47,7 +46,7 @@ namespace Niantic.ARDK.AR.Frame
       ReadOnlyCollection<IARAnchor> anchors, // Even native ARAnchors are directly serializable.
       _SerializableARMap[] maps,
       float worldScale,
-      _SerializableARPointCloud rawFeaturePoints = null
+      Matrix4x4 estimatedDisplayTransform
     ):
       base
       (
@@ -59,7 +58,7 @@ namespace Niantic.ARDK.AR.Frame
         anchors,
         maps,
         worldScale,
-        rawFeaturePoints
+        estimatedDisplayTransform
       )
     {
     }
@@ -74,7 +73,7 @@ namespace Niantic.ARDK.AR.Frame
     {
       if ((types & ~ARHitTestResultType.ExistingPlaneUsingExtent) != 0)
       {
-        const string message =
+        var message =
           "Only hit tests for ARHitTestResultType.ExistingPlaneUsingExtent " +
           "is supported in Mock or Remote ARSessions.";
 
@@ -191,11 +190,11 @@ namespace Niantic.ARDK.AR.Frame
       out float distance
     )
     {
-      var denominator = Vector3.Dot(ray.direction, normal);
-      if (Mathf.Abs(denominator) > 0.0001f)
+      var denom = Vector3.Dot(ray.direction, normal);
+      if (Mathf.Abs(denom) > 0.0001f)
       {
         var diff = center - ray.origin;
-        float t = Vector3.Dot(diff, normal) / denominator;
+        float t = Vector3.Dot(diff, normal) / denom;
         if (t > 0.0001f)
         {
           hit = ray.origin + (t * ray.direction);

@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections;
@@ -19,6 +19,12 @@ namespace Niantic.ARDK.AR.Image
       _planes = planeArray;
     }
 
+    internal void _Dispose()
+    {
+      foreach (var plane in _planes)
+        plane._Dispose();
+    }
+
     public int Count
     {
       get { return _planes.Length; }
@@ -32,7 +38,7 @@ namespace Niantic.ARDK.AR.Image
     {
       get { return this[planeIndex]; }
     }
-
+    
     public IEnumerator<_SerializableImagePlane> GetEnumerator()
     {
       foreach (var plane in _planes)
@@ -43,16 +49,9 @@ namespace Niantic.ARDK.AR.Image
     {
       return GetEnumerator();
     }
-
     IEnumerator IEnumerable.GetEnumerator()
     {
       return GetEnumerator();
-    }
-
-    public void Dispose()
-    {
-      foreach (var plane in _planes)
-        plane.Dispose();
     }
   }
 }

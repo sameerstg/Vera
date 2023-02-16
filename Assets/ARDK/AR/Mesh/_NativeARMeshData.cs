@@ -1,10 +1,9 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Runtime.InteropServices;
 
 using Niantic.ARDK.Internals;
-using Niantic.ARDK.Utilities;
 
 namespace Niantic.ARDK.AR.Mesh
 {
@@ -13,7 +12,7 @@ namespace Niantic.ARDK.AR.Mesh
   {
     static _NativeARMeshData()
     {
-      _Platform.Init();
+      Platform.Init();
     }
 
     private IntPtr _nativeHandle;
@@ -24,8 +23,6 @@ namespace Niantic.ARDK.AR.Mesh
 
     public _NativeARMeshData(IntPtr nativeHandle)
     {
-      _NativeAccess.AssertNativeAccessValid();
-
       if (nativeHandle == IntPtr.Zero)
         throw new ArgumentException("nativeHandle can't be Zero.", nameof(nativeHandle));
 
@@ -36,7 +33,8 @@ namespace Niantic.ARDK.AR.Mesh
 
     private static void _ReleaseImmediate(IntPtr nativeHandle)
     {
-      _NARMesh_Release(nativeHandle);
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        _NARMesh_Release(nativeHandle);
     }
 
     ~_NativeARMeshData()
@@ -61,7 +59,15 @@ namespace Niantic.ARDK.AR.Mesh
 
     public float MeshBlockSize
     {
-      get => _NARMesh_GetMeshBlockSize(_nativeHandle);
+      get
+      {
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          return _NARMesh_GetMeshBlockSize(_nativeHandle);
+#pragma warning disable 0162
+        else
+          throw new IncorrectlyUsedNativeClassException();
+#pragma warning restore 0162
+      }
     }
 
     public int GetBlockMeshInfo
@@ -74,15 +80,13 @@ namespace Niantic.ARDK.AR.Mesh
       blockBufferSizeOut = 0;
       vertexBufferSizeOut = 0;
       faceBufferSizeOut = 0;
-
-      return
-        _NARMesh_GetBlockMeshInfo
-        (
-          _nativeHandle,
-          out blockBufferSizeOut,
-          out vertexBufferSizeOut,
-          out faceBufferSizeOut
-        );
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        return _NARMesh_GetBlockMeshInfo(_nativeHandle,
+          out blockBufferSizeOut, out vertexBufferSizeOut, out faceBufferSizeOut);
+#pragma warning disable 0162
+      else
+        throw new IncorrectlyUsedNativeClassException();
+#pragma warning restore 0162
     }
 
     public int GetBlockMesh
@@ -95,44 +99,40 @@ namespace Niantic.ARDK.AR.Mesh
       int faceBufferSize
     )
     {
-      return
-        _NARMesh_GetBlockMesh
-        (
-          _nativeHandle,
-          blockBuffer,
-          vertexBuffer,
-          faceBuffer,
-          blockBufferSize,
-          vertexBufferSize,
-          faceBufferSize
-        );
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        return _NARMesh_GetBlockMesh(_nativeHandle,
+          blockBuffer, vertexBuffer, faceBuffer,
+          blockBufferSize, vertexBufferSize, faceBufferSize);
+#pragma warning disable 0162
+      else
+        throw new IncorrectlyUsedNativeClassException();
+#pragma warning restore 0162
     }
 
     [DllImport(_ARDKLibrary.libraryName)]
     private static extern void _NARMesh_Release(IntPtr nativeHandle);
 
     [DllImport(_ARDKLibrary.libraryName)]
-    private static extern float _NARMesh_GetMeshBlockSize(IntPtr nativeHandle);
-
-    [DllImport(_ARDKLibrary.libraryName)]
-    private static extern int _NARMesh_GetBlockMeshInfo
+    private static extern float _NARMesh_GetMeshBlockSize
     (
-      IntPtr nativeHandle,
-      out int blockBufferSizeOut,
-      out int vertexBufferSizeOut,
-      out int faceBufferSizeOut
+      IntPtr nativeHandle
     );
 
     [DllImport(_ARDKLibrary.libraryName)]
-    private static extern int _NARMesh_GetBlockMesh
-    (
+    private static extern int _NARMesh_GetBlockMeshInfo(
+      IntPtr nativeHandle,
+      out int blockBufferSizeOut,
+      out int vertexBufferSizeOut,
+      out int faceBufferSizeOut);
+
+    [DllImport(_ARDKLibrary.libraryName)]
+    private static extern int _NARMesh_GetBlockMesh(
       IntPtr nativeHandle,
       IntPtr blockBuffer,
       IntPtr vertexBuffer,
       IntPtr faceBuffer,
       int blockBufferSize,
       int vertexBufferSize,
-      int faceBufferSize
-    );
+      int faceBufferSize);
   }
 }

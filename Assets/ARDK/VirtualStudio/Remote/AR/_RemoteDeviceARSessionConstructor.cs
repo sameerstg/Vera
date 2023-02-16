@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
@@ -53,8 +53,7 @@ namespace Niantic.ARDK.VirtualStudio.Remote
         message.StageIdentifier,
         message.ImageCompressionQuality,
         message.TargetImageFramerate,
-        message.TargetBufferFramerate,
-        message.TargetFeaturePointFramerate
+        message.TargetBufferFramerate
       );
     }
 
@@ -63,8 +62,7 @@ namespace Niantic.ARDK.VirtualStudio.Remote
       Guid stageIdentifier,
       int compressionQuality,
       int imageFramerate,
-      int awarenessFramerate,
-      int featurePointFramerate
+      int awarenessFramerate
     )
     {
       if (Handler != null)
@@ -75,13 +73,11 @@ namespace Niantic.ARDK.VirtualStudio.Remote
 
       ARLog._DebugFormat
       (
-        "Constructing remote ARSession with compressionQuality: {0}, imageFramerate: {1}, " +
-        "awarenessFramerate: {2}, featurePointFramerate: {3}",
+        "Constructing remote ARSession with compressionQuality: {0}, imageFramerate: {1}, awarenessFramerate: {2}",
         false,
         compressionQuality,
         imageFramerate,
-        awarenessFramerate,
-        featurePointFramerate
+        awarenessFramerate
       );
 
       var session =
@@ -90,12 +86,11 @@ namespace Niantic.ARDK.VirtualStudio.Remote
           stageIdentifier,
           compressionQuality,
           imageFramerate,
-          awarenessFramerate,
-          featurePointFramerate
+          awarenessFramerate
         );
 
       _handler = session;
-      session.InnerARSession.Deinitialized += _ =>
+      session.InnerARSession.Deinitialized += (_) =>
       {
         _handler.Dispose();
         _handler = null;

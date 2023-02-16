@@ -1,12 +1,12 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Runtime.InteropServices;
 
 using AOT;
 
+using Niantic.ARDK.AR.Awareness.Depth.Generators;
 using Niantic.ARDK.AR.VideoFormat;
 using Niantic.ARDK.Internals;
 using Niantic.ARDK.Utilities;
@@ -18,28 +18,27 @@ namespace Niantic.ARDK.AR.Configuration
   {
     static _NativeARConfiguration()
     {
-      _Platform.Init();
+      Platform.Init();
     }
 
     internal _NativeARConfiguration(IntPtr nativeHandle)
     {
-      _NativeAccess.AssertNativeAccessValid();
-
       if (nativeHandle == IntPtr.Zero)
         throw new ArgumentException("nativeHandle can't be Zero.", nameof(nativeHandle));
 
-      NativeHandle = nativeHandle;
+      _nativeHandle = nativeHandle;
       GC.AddMemoryPressure(_MemoryPressure);
     }
 
     private static void _ReleaseImmediate(IntPtr nativeHandle)
     {
-      _NARConfiguration_Release(nativeHandle);
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        _NARConfiguration_Release(nativeHandle);
     }
 
     ~_NativeARConfiguration()
     {
-      _ReleaseImmediate(NativeHandle);
+      _ReleaseImmediate(_nativeHandle);
       GC.RemoveMemoryPressure(_MemoryPressure);
     }
 
@@ -47,17 +46,21 @@ namespace Niantic.ARDK.AR.Configuration
     {
       GC.SuppressFinalize(this);
 
-      var nativeHandle = NativeHandle;
+      var nativeHandle = _nativeHandle;
       if (nativeHandle != IntPtr.Zero)
       {
-        NativeHandle = IntPtr.Zero;
+        _nativeHandle = IntPtr.Zero;
 
         _ReleaseImmediate(nativeHandle);
         GC.RemoveMemoryPressure(_MemoryPressure);
       }
     }
 
-    public IntPtr NativeHandle { get; private set; }
+    private IntPtr _nativeHandle;
+    internal IntPtr _NativeHandle
+    {
+      get { return _nativeHandle; }
+    }
 
     // Used to inform the C# GC that there is managed memory held by this object.
     protected virtual long _MemoryPressure
@@ -65,29 +68,41 @@ namespace Niantic.ARDK.AR.Configuration
       get { return (1L * 1L) + (1L * 8L); }
     }
 
-    public abstract IReadOnlyCollection<IARVideoFormat> SupportedVideoFormats { get; }
+    public abstract ReadOnlyCollection<IARVideoFormat> SupportedVideoFormats { get; }
 
-    public virtual bool IsLightEstimationEnabled
+    public bool IsLightEstimationEnabled
     {
       get
       {
-        return _NARConfiguration_IsLightEstimationEnabled(NativeHandle) != 0;
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          return _NARConfiguration_IsLightEstimationEnabled(_nativeHandle) != 0;
+
+        #pragma warning disable 0162
+        throw new IncorrectlyUsedNativeClassException();
+        #pragma warning restore 0162
       }
       set
       {
-        _NARConfiguration_SetLightEstimationEnabled(NativeHandle, value ? 1 : (UInt32)0);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARConfiguration_SetLightEstimationEnabled(_nativeHandle, value ? 1 : (UInt32)0);
       }
     }
 
-    public virtual WorldAlignment WorldAlignment
+    public WorldAlignment WorldAlignment
     {
       get
       {
-        return (WorldAlignment)_NARConfiguration_GetWorldAlignment(NativeHandle);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          return (WorldAlignment)_NARConfiguration_GetWorldAlignment(_nativeHandle);
+
+#pragma warning disable 0162
+        throw new IncorrectlyUsedNativeClassException();
+#pragma warning restore 0162
       }
       set
       {
-        _NARConfiguration_SetWorldAlignment(NativeHandle, (UInt64)value);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARConfiguration_SetWorldAlignment(_nativeHandle, (UInt64)value);
       }
     }
 
@@ -97,7 +112,7 @@ namespace Niantic.ARDK.AR.Configuration
     {
       get
       {
-        var videoFormatHandle = _NARConfiguration_GetVideoFormat(NativeHandle);
+        var videoFormatHandle = _NARConfiguration_GetVideoFormat(_nativeHandle);
 
         if (videoFormatHandle == IntPtr.Zero)
           return null;
@@ -106,10 +121,13 @@ namespace Niantic.ARDK.AR.Configuration
       }
       set
       {
-        if (!(value is _NativeARVideoFormat nativeFormat))
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        {
+          if (!(value is _NativeARVideoFormat nativeFormat))
             return;
-
-        _NARConfiguration_SetVideoFormat(NativeHandle, nativeFormat._NativeHandle);
+          
+          _NARConfiguration_SetVideoFormat(_nativeHandle, nativeFormat._NativeHandle);
+        }
       }
     }
 
@@ -117,7 +135,6 @@ namespace Niantic.ARDK.AR.Configuration
     {
       target.IsLightEstimationEnabled = IsLightEstimationEnabled;
       target.WorldAlignment = WorldAlignment;
-
       var videoFormat = VideoFormat;
       if (videoFormat != null)
         target.VideoFormat = videoFormat;

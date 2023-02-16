@@ -4,10 +4,11 @@
 EditorBuildSettings:
   m_ObjectHideFlags: 0
   serializedVersion: 2
-  m_Scenes: []
-  m_configObjects:
-    UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: 38bed91c2d07dbb4ba103f9c848a6a65, type: 2}
-    UnityEditor.XR.ARKit.ARKitSettings: {fileID: 11400000, guid: 18d1b5775dd4a1f409141562873bd0a7, type: 2}
-    com.unity.xr.magicleap.magic_leap_settings: {fileID: 11400000, guid: 23025c3e94647d941bdc34c7fc0e3b30, type: 2}
-    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: d15ef5791ebf3214da994a326c741fae, type: 2}
-    com.unity.xr.openxr.settings4: {fileID: 11400000, guid: 0e993de5257e37b40b0d9aef90bdb005, type: 2}
+  m_Scenes:
+  - enabled: 0
+    path: Assets/Scenes/ARDKHelloWorld.unity
+    guid: 9fc0d4010bbf28b4594072e72b8655ab
+  - enabled: 1
+    path: Assets/Scenes/ARDKMeshing.unity
+    guid: a3f1590fd67a2044fb900c425f72b8aa
+  m_configObjects: {}

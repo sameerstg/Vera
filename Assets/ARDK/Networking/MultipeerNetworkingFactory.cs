@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections.Generic;
@@ -37,16 +37,16 @@ namespace Niantic.ARDK.Networking
     /// @returns The created MultipeerNetworking, or throws if it was not possible to create a session.
     public static IMultipeerNetworking Create(Guid stageIdentifier = default(Guid))
     {
-      return Create(_VirtualStudioLauncher.SelectedMode, ServerConfiguration.ARBE, stageIdentifier);
+      return _Create(ServerConfiguration.ARBE, null, stageIdentifier);
     }
 
     public static IMultipeerNetworking Create
     (
       ServerConfiguration serverConfiguration,
-      Guid stageIdentifier = default
+      Guid stageIdentifier = default(Guid)
     )
     {
-      return Create(_VirtualStudioLauncher.SelectedMode, serverConfiguration, stageIdentifier);
+      return _Create(serverConfiguration, null, stageIdentifier);
     }
 
     /// Create a MultipeerNetworking with the specified RuntimeEnvironment.
@@ -59,10 +59,11 @@ namespace Niantic.ARDK.Networking
     /// @returns The created MultipeerNetworking, or throws if it was not possible to create a session.
     public static IMultipeerNetworking Create(RuntimeEnvironment env, Guid stageIdentifier = default(Guid))
     {
-      var networking = Create(env, ServerConfiguration.ARBE, stageIdentifier);
+      var networking = _Create(env, stageIdentifier, ServerConfiguration.ARBE);
       if (networking == null)
       {
-        throw new NotSupportedException("The provided env is not supported by this build.");
+        throw new NotSupportedException
+          ("The provided env is not supported by this build.");
       }
 
       return networking;
@@ -85,33 +86,14 @@ namespace Niantic.ARDK.Networking
       Guid stageIdentifier = default(Guid)
     )
     {
-      if (env == RuntimeEnvironment.Default)
-        return Create(_VirtualStudioLauncher.SelectedMode, serverConfiguration, stageIdentifier);
-
-      if (stageIdentifier == default(Guid))
-        stageIdentifier = Guid.NewGuid();
-
-      IMultipeerNetworking result;
-      switch (env)
+      var networking = _Create(env, stageIdentifier, serverConfiguration);
+      if (networking == null)
       {
-        case RuntimeEnvironment.LiveDevice:
-          result = new _NativeMultipeerNetworking(serverConfiguration, stageIdentifier);
-          break;
-
-        case RuntimeEnvironment.Remote:
-          result = new _RemoteEditorMultipeerNetworking(serverConfiguration, stageIdentifier);
-          break;
-
-        case RuntimeEnvironment.Mock:
-          result = new _MockMultipeerNetworking(stageIdentifier, _VirtualStudioSessionsManager.Instance);
-          break;
-
-        default:
-          throw new InvalidEnumArgumentException(nameof(env), (int)env, env.GetType());
+        throw new NotSupportedException
+          ("The the provided env is not supported by this build.");
       }
 
-      _InvokeNetworkingInitialized(result, isLocal: true);
-      return result;
+      return networking;
     }
 
     /// A collection of all current networking stacks
@@ -147,12 +129,52 @@ namespace Niantic.ARDK.Networking
       }
     }
 
+    /// Tries to create a MultipeerNetworking of any of the given envs.
+    ///
+    /// @param configuration
+    ///   Configuration object telling how to connect to the server.
+    /// @param envs
+    ///   A collection of envs used to create the networking for. As not all platforms support
+    ///   all envs, the code will try to create the networking for the first env, then for the
+    ///   second and so on. If envs is null or empty, then the order used is LiveDevice,
+    ///   Remote and finally Mock.
+    /// @param stageIdentifier
+    ///   The identifier used by the C++ library to connect all related components.
+    ///
+    /// @returns The created networking, or null if it was not possible to create the object.
+    internal static IMultipeerNetworking _Create
+    (
+      ServerConfiguration configuration,
+      IEnumerable<RuntimeEnvironment> envs = null,
+      Guid stageIdentifier = default(Guid)
+    )
+    {
+      bool triedAtLeast1 = false;
+
+      if (envs != null)
+      {
+        foreach (var env in envs)
+        {
+          var possibleResult = _Create(env, stageIdentifier, configuration);
+          if (possibleResult != null)
+            return possibleResult;
+
+          triedAtLeast1 = true;
+        }
+      }
+
+      if (!triedAtLeast1)
+        return _Create(configuration, ARSessionFactory._defaultBestMatches, stageIdentifier);
+
+      throw new NotSupportedException("None of the provided envs are supported by this build.");
+    }
+
     internal static IMultipeerNetworking _CreateVirtualStudioManagedNetworking
     (
       RuntimeEnvironment env,
       ServerConfiguration configuration,
       Guid stageIdentifier,
-      _IVirtualStudioSessionsManager virtualStudioSessionsManager,
+      _IVirtualStudioManager virtualStudioMaster,
       bool isLocal
     )
     {
@@ -160,7 +182,7 @@ namespace Niantic.ARDK.Networking
       switch (env)
       {
         case RuntimeEnvironment.Mock:
-          implementation = new _MockMultipeerNetworking(stageIdentifier, virtualStudioSessionsManager);
+          implementation = new _MockMultipeerNetworking(stageIdentifier, virtualStudioMaster);
           break;
 
         case RuntimeEnvironment.Remote:
@@ -174,6 +196,57 @@ namespace Niantic.ARDK.Networking
 
       _InvokeNetworkingInitialized(implementation, isLocal);
       return implementation;
+    }
+
+    private static IMultipeerNetworking _Create
+    (
+      RuntimeEnvironment env,
+      Guid stageIdentifier,
+      ServerConfiguration configuration
+    )
+    {
+      if (stageIdentifier == default(Guid))
+        stageIdentifier = Guid.NewGuid();
+
+      IMultipeerNetworking result;
+      switch (env)
+      {
+        case RuntimeEnvironment.Default:
+          return Create(configuration, stageIdentifier);
+
+        case RuntimeEnvironment.LiveDevice:
+          result = new _NativeMultipeerNetworking(configuration, stageIdentifier);
+          break;
+
+        case RuntimeEnvironment.Remote:
+          if (!_RemoteConnection.IsEnabled)
+            return null;
+
+          result = new _RemoteEditorMultipeerNetworking(configuration, stageIdentifier);
+          break;
+
+        case RuntimeEnvironment.Mock:
+          result = new _MockMultipeerNetworking(stageIdentifier, _VirtualStudioManager.Instance);
+          break;
+
+        default:
+          throw new InvalidEnumArgumentException(nameof(env), (int)env, env.GetType());
+      }
+
+      _InvokeNetworkingInitialized(result, isLocal: true);
+      return result;
+    }
+
+    internal static _NativeMultipeerNetworking _CreateLiveDeviceNetworking
+    (
+      ServerConfiguration serverConfiguration,
+      Guid stageIdentifier,
+      bool isLocal
+    )
+    {
+      var result = new _NativeMultipeerNetworking(serverConfiguration, stageIdentifier);
+      _InvokeNetworkingInitialized(result, isLocal);
+      return result;
     }
 
     private static

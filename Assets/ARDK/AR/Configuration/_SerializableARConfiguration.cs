@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections.Generic;
@@ -18,10 +18,14 @@ namespace Niantic.ARDK.AR.Configuration
     public bool IsLightEstimationEnabled { get; set; }
     public WorldAlignment WorldAlignment { get; set; }
 
-    public IReadOnlyCollection<IARVideoFormat> SupportedVideoFormats
+    private const string _supportedVideoFormatsLogMessage =
+      "ARWorldTrackingConfiguration.SupportedVideoFormats unsupported in Editor or Standalone!";
+
+    public ReadOnlyCollection<IARVideoFormat> SupportedVideoFormats
     {
       get
       {
+        ARLog._Error(_supportedVideoFormatsLogMessage);
         return EmptyReadOnlyCollection<IARVideoFormat>.Instance;
       }
     }
@@ -30,13 +34,17 @@ namespace Niantic.ARDK.AR.Configuration
     {
       get
       {
+        ARLog._Error(_supportedVideoFormatsLogMessage);
         return null;
       }
       set
       {
+        ARLog._Error(_supportedVideoFormatsLogMessage);
       }
     }
-    
+
+
+
     public virtual void CopyTo(IARConfiguration target)
     {
       target.IsLightEstimationEnabled = IsLightEstimationEnabled;

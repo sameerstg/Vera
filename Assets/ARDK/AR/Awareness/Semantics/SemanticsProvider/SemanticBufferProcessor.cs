@@ -1,27 +1,20 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 using Niantic.ARDK.AR.ARSessionEventArgs;
 using Niantic.ARDK.Rendering;
-using Niantic.ARDK.Utilities;
 
 using UnityEngine;
 
 namespace Niantic.ARDK.AR.Awareness.Semantics
 {
-  public class SemanticBufferProcessor:
-    AwarenessBufferProcessor<ISemanticBuffer>,
+  public class SemanticBufferProcessor: 
+    AwarenessBufferProcessor<ISemanticBuffer>, 
     ISemanticBufferProcessor
   {
     // The currently active AR session
     private IARSession _session;
-    
-    internal IARSession ARSession
-    {
-      get => _session;
-    }
 
     // The render target descriptor used to determine the viewport resolution
     private RenderTarget _viewport;
@@ -33,7 +26,7 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
       _viewport = UnityEngine.Camera.main;
       ARSessionFactory.SessionInitialized += OnARSessionInitialized;
     }
-
+    
     /// Allocates a new semantic buffer processor.
     /// @param viewport Determines the target viewport to fit the awareness buffer to.
     public SemanticBufferProcessor(RenderTarget viewport)
@@ -41,39 +34,23 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
       _viewport = viewport;
       ARSessionFactory.SessionInitialized += OnARSessionInitialized;
     }
-
+    
     protected override void Dispose(bool disposing)
     {
       base.Dispose(disposing);
-
+      
       ARSessionFactory.SessionInitialized -= OnARSessionInitialized;
       if (_session != null)
         _session.FrameUpdated -= OnFrameUpdated;
     }
-
+    
     private void OnARSessionInitialized(AnyARSessionInitializedArgs args)
     {
       if (_session != null)
         _session.FrameUpdated -= OnFrameUpdated;
-      
-      if (_NativeAccess.IsNativeAccessValid() && _session is _NativeARSession prevNativeARSession)
-        prevNativeARSession.FrameDropped -= OnFrameDropped;
 
       _session = args.Session;
       _session.FrameUpdated += OnFrameUpdated;
-
-      if (_NativeAccess.IsNativeAccessValid() && _session is _NativeARSession nativeARSession)
-        nativeARSession.FrameDropped += OnFrameDropped;
-    }
-
-    private void OnFrameDropped(FrameUpdatedArgs args)
-    {
-      // Wait for the first regular update
-      if (AwarenessBuffer == null)
-        return;
-
-      // Try to capture dropped keyframes
-      SetAwarenessBuffer(args.Frame.Semantics);
     }
 
     private void OnFrameUpdated(FrameUpdatedArgs args)
@@ -82,12 +59,18 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
       if (frame == null)
         return;
 
-      var orientation = MathUtils.CalculateScreenOrientation();
-
-      _ProcessFrame
+#if UNITY_EDITOR 
+      var orientation = Screen.width > Screen.height
+        ? ScreenOrientation.LandscapeLeft
+        : ScreenOrientation.Portrait;
+#else
+      var orientation = Screen.orientation;
+#endif
+      
+      ProcessFrame
       (
-        frame,
         buffer: frame.Semantics,
+        arCamera: frame.Camera,
         targetResolution: _viewport.GetResolution(forOrientation: orientation),
         targetOrientation: orientation
       );
@@ -95,7 +78,7 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
 
     /// Assigns a new render target descriptor for the semantics processor.
     /// The render target defines the viewport attributes to correctly fit
-    /// the semantics buffer.
+    /// the semantics buffer. 
     public void AssignViewport(RenderTarget target)
     {
       _viewport = target;
@@ -119,11 +102,11 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
       var semanticsBuffer = AwarenessBuffer;
       if (semanticsBuffer == null)
         return 0u;
-
+      
       // Get normalized coordinates
       var x = viewportX + 0.5f;
       var y = viewportY + 0.5f;
-      var resolution = _viewport.GetResolution(MathUtils.CalculateScreenOrientation());
+      var resolution = _viewport.GetResolution(Screen.orientation);
       var uv = new Vector3(x / resolution.width, y / resolution.height, 1.0f);
 
       return AwarenessBuffer.Sample(uv, SamplerTransform);
@@ -183,15 +166,15 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
     {
       var semantics = GetSemantics(viewportX, viewportY);
       var bitMask = AwarenessBuffer.GetChannelTextureMask(channelName);
-
+      
       return (semantics & bitMask) != 0u;
     }
-
+    
     public void CopyToAlignedTextureARGB32(int channel, ref Texture2D texture, ScreenOrientation orientation)
     {
       if (AwarenessBuffer == null)
         return;
-
+      
       // Get a typed buffer
       ISemanticBuffer semanticsBuffer = AwarenessBuffer;
 
@@ -206,7 +189,7 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
       (
         ref texture,
         orientation,
-
+        
         // The sampler function needs to be defined such that given a destination
         // texture coordinate, what color needs to be written to that position?
         // We sample the typed awareness buffer and apply the channel bitmask.
@@ -218,12 +201,12 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
           : Color.clear
       );
     }
-
+    
     public void CopyToAlignedTextureARGB32(int[] channels, ref Texture2D texture, ScreenOrientation orientation)
     {
       if (AwarenessBuffer == null)
         return;
-
+      
       // Get a typed buffer
       ISemanticBuffer semanticsBuffer = AwarenessBuffer;
 
@@ -238,7 +221,7 @@ namespace Niantic.ARDK.AR.Awareness.Semantics
       (
         ref texture,
         orientation,
-
+        
         // The sampler function needs to be defined such that given a destination
         // texture coordinate, what color needs to be written to that position?
         // We sample the typed awareness buffer and apply the channel bitmask.

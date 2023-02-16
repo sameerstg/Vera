@@ -1,16 +1,16 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
-#if UNITY_EDITOR
-
+#if UNITY_EDITOR && UNITY_2018_3_OR_NEWER
+using System;
+using System.Diagnostics;
 using System.Linq;
+using System.Timers;
+using Niantic.ARDK.Networking.HLAPI.Routing;
 using UnityEditor;
-#if UNITY_2021_2_OR_NEWER
-using UnityEditor.SceneManagement;
-#else
-using UnityEditor.Experimental.SceneManagement;
-#endif
 
 using UnityEngine;
+using Debug = UnityEngine.Debug;
+using Random = UnityEngine.Random;
 
 namespace Niantic.ARDK.Networking.HLAPI.Object.Unity.Helpers {
   /// <summary>
@@ -25,7 +25,7 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity.Helpers {
         var netUniObj = (NetworkedUnityObject) target;
 
         // Make sure the prefab ID on this object is set properly.
-        UpdateInstanceId(netUniObj);
+        UpdateInstanceId(netUniObj); 
         UpdateNetworkedBehavioursList(netUniObj);
       }
 
@@ -40,7 +40,7 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity.Helpers {
     private void UpdateNetworkedBehavioursList(NetworkedUnityObject obj) {
       // If we're in the prefab stage, we can handle things knowing that we're modifying the prefab
       // directly.
-      if (PrefabStageUtility.GetCurrentPrefabStage() != null) {
+      if (UnityEditor.SceneManagement.PrefabStageUtility.GetCurrentPrefabStage() != null) {
         // Regenerate the behaviour list in place
         obj._behaviours = obj.GetComponents<NetworkedBehaviour>();
       } else if (PrefabUtility.IsPartOfPrefabInstance(obj) &&
@@ -77,7 +77,7 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity.Helpers {
       // We want to first ensure we are selecting an instance, not a prefab.
       if
       (
-        PrefabStageUtility.GetCurrentPrefabStage() == null &&
+        UnityEditor.SceneManagement.PrefabStageUtility.GetCurrentPrefabStage() == null &&
         PrefabUtility.IsPartOfPrefabInstance(netUniObj) &&
         !PrefabUtility.IsPrefabAssetMissing(netUniObj)
       )
@@ -88,7 +88,7 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity.Helpers {
           var prefabPath =
             PrefabUtility.GetPrefabAssetPathOfNearestInstanceRoot(netUniObj);
           var prefab = PrefabUtility.LoadPrefabContents(prefabPath);
-          var prefabNetUniObj = prefab.GetComponent<NetworkedUnityObject>();
+          var prefabNetUniObj = prefab.GetComponent<NetworkedUnityObject>(); 
           SetPrefabId(serializedObject, (ulong)prefabNetUniObj.PrefabId);
         }
         else

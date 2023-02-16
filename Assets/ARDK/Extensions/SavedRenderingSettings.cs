@@ -1,7 +1,6 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
 using UnityEngine;
 
-namespace Niantic.ARDK.Extensions
+namespace Niantic.ARDK.Helpers
 {
   internal class SavedRenderingSettings
   {

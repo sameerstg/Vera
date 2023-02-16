@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
@@ -7,7 +7,6 @@ using Niantic.ARDK.AR.Awareness;
 using Niantic.ARDK.AR.Awareness.Depth;
 using Niantic.ARDK.Extensions;
 using Niantic.ARDK.Utilities;
-using Niantic.ARDK.Utilities.Input.Legacy;
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -40,9 +39,6 @@ namespace Niantic.ARDKExamples
     
     [SerializeField]
     private Text _toggleDepthButtonText = null;
-    
-    [SerializeField]
-    private Text _toggleFilterText = null;
 
     [Header("Game Objects")]
     [SerializeField]
@@ -196,13 +192,6 @@ namespace Niantic.ARDKExamples
 
       // Toggle UI elements
       _toggleDepthButtonText.text = depthEnabled ? "Disable Depth" : "Enable Depth";
-    }
-
-    public void TogglePreferSmoothEdges()
-    {
-      var preferSmoothEdges = !_arDepthManager.PreferSmoothEdges;
-      _arDepthManager.PreferSmoothEdges = preferSmoothEdges;
-      _toggleFilterText.text = preferSmoothEdges ? "Sampling: Bilinear" : "Sampling: Point";
     }
   }
 }

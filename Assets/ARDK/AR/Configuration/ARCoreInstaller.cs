@@ -1,9 +1,8 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System.Runtime.InteropServices;
 
 using Niantic.ARDK.Internals;
-using Niantic.ARDK.Utilities;
 
 namespace Niantic.ARDK.AR.Configuration
 {
@@ -66,7 +65,7 @@ namespace Niantic.ARDK.AR.Configuration
     {
       var result = InstallResult.Installed;
 
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         result = (InstallResult)_NARConfiguration_RequestInstallARCore
         (

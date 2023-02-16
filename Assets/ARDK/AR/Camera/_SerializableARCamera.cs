@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
@@ -10,7 +10,7 @@ namespace Niantic.ARDK.AR.Camera
 {
   [Serializable]
   internal sealed class _SerializableARCamera:
-    IUpdatableARCamera
+    IARCamera
   {
     internal _SerializableARCamera()
     {
@@ -61,6 +61,14 @@ namespace Niantic.ARDK.AR.Camera
       float farClipPlane
     )
     {
+      #if UNITY_EDITOR
+      // Screen.orientation doesn't work in the editor
+      if (orientation == Screen.orientation)
+        orientation = Screen.width > Screen.height
+          ? ScreenOrientation.LandscapeLeft
+          : ScreenOrientation.Portrait;
+      #endif
+      
       return MathUtils.CalculateProjectionMatrix
       (
         this,
@@ -93,15 +101,6 @@ namespace Niantic.ARDK.AR.Camera
     void IDisposable.Dispose()
     {
       // Do nothing. This object is fully managed.
-    }
-
-    public void UpdateDisplayGeometry
-    (
-      ScreenOrientation orientation,
-      int viewportWidth,
-      int viewportHeight)
-    {
-      // Do nothing. No need to update display geometry.
     }
   }
 }

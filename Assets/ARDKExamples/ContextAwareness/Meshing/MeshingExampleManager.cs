@@ -1,13 +1,10 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
-
-using System;
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using Niantic.ARDK.AR;
 using Niantic.ARDK.AR.ARSessionEventArgs;
 using Niantic.ARDK.AR.Awareness;
 using Niantic.ARDK.AR.Mesh;
 using Niantic.ARDK.Extensions;
-using Niantic.ARDK.Extensions.Meshing;
 using Niantic.ARDK.Utilities.Logging;
 
 using UnityEngine;
@@ -27,11 +24,8 @@ namespace Niantic.ARDKExamples
     [SerializeField]
     private GameObject _loadingStatusPanel = null;
 
-    [SerializeField]
-    private ARMeshManager _meshManager;
-
     private bool _contextAwarenessLoadComplete = false;
-    
+
     private void Awake()
     {
       // UnityEngine.Events.UnityAction is needed as a workaround as Unity's il2cpp inlines methods
@@ -39,7 +33,7 @@ namespace Niantic.ARDKExamples
       // to toggle logs on and off. This caller corresponds to UI button presses.
       var logFeatures = new string[]
       {
-        "Niantic.ARDK.Extensions.Meshing", "UnityEngine.Events.UnityAction", "UnityEngine.Events.UnityEvent" 
+        "Niantic.ARDK.Extensions.Meshing", "UnityEngine.Events.UnityAction"
       };
       ARLog.EnableLogFeatures(logFeatures);
     }
@@ -124,11 +118,6 @@ namespace Niantic.ARDKExamples
     {
       if (_loadingStatusPanel)
         _loadingStatusPanel.gameObject.SetActive(toggle);
-    }
-
-    public void SwitchMeshingMode(int mode)
-    {
-      _meshManager.SelectedMeshingMode = (ARMeshManager.MeshingMode)mode;
     }
   }
 }

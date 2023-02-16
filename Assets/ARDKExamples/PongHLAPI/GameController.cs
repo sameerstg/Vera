@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
@@ -17,7 +17,6 @@ using Niantic.ARDK.Networking.HLAPI.Object.Unity;
 using Niantic.ARDK.Networking.HLAPI.Routing;
 using Niantic.ARDK.Networking.MultipeerNetworkingEventArgs;
 using Niantic.ARDK.Utilities;
-using Niantic.ARDK.Utilities.Input.Legacy;
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -59,6 +58,7 @@ namespace Niantic.ARDKExamples.PongHLAPI
 
     private GameObject _player;
     private GameObject _playingField;
+    private GameObject _opponent;
 
     /// The score
     public Text score;
@@ -384,7 +384,7 @@ namespace Niantic.ARDKExamples.PongHLAPI
           if (_gameStart)
             _ball = FindObjectOfType<BallBehaviour>().gameObject;
         };
-#pragma warning disable 0618
+
       _hitStreamReplicator =
         new MessageStreamReplicator<Vector3>
         (
@@ -392,7 +392,7 @@ namespace Niantic.ARDKExamples.PongHLAPI
           _arNetworking.Networking.AnyToAnyDescriptor(TransportType.ReliableOrdered),
           group
         );
-#pragma warning restore 0618
+
       _hitStreamReplicator.MessageReceived +=
         (args) =>
         {

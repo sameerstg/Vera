@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Runtime.InteropServices;
@@ -8,8 +8,6 @@ using AOT;
 using Niantic.ARDK.Internals;
 using Niantic.ARDK.Utilities;
 using Niantic.ARDK.Utilities.Logging;
-
-using UnityEngine;
 
 namespace Niantic.ARDK.AR.ReferenceImage
 {
@@ -26,12 +24,9 @@ namespace Niantic.ARDK.AR.ReferenceImage
     /// @param height The height of the image in pixels
     /// @param byteOrderInfo The endianness of each pixel (See ByteOrderInfo)
     /// @param alphaInfo The location of the alpha channel in each pixel (See AlphaInfo)
-    /// @param physicalWidth
-    ///   The physical width of the image in meters. Be as accurate as possible, entering an
-    ///   incorrect physical size will result in detecting an anchor that’s the wrong distance
-    ///   from the camera.
-    /// @param orientation
-    ///   The orientation of the provided image. (See Orientation for more information)
+    /// @param physicalWidth The physical width of the image in meters.
+    /// @param orientation The orientation of the provided image. (See Orientation for more
+    ///   information)
     /// @note Not supported in Editor.
     /// @note The ARReferenceImage will contain the full image buffer until it is destroyed.
     ///   Unless reuse of the constructed ARReferenceImage is required in the near future, it is
@@ -51,7 +46,7 @@ namespace Niantic.ARDK.AR.ReferenceImage
       Orientation orientation = Orientation.Up
     )
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         var result =
           _NARReferenceImage_Init
@@ -77,22 +72,19 @@ namespace Niantic.ARDK.AR.ReferenceImage
 
         return _NativeARReferenceImage._FromNativeHandle(result);
       }
-#pragma warning disable 0162
+      #pragma warning disable 0162
       else
       {
-        return new _SerializableARReferenceImage(name, Vector2.zero);
+        throw new InvalidOperationException("This operation is not supported on this platform.");
       }
-#pragma warning restore 0162
+      #pragma warning restore 0162
     }
 
     /// Creates a new reference image from the contents of a JPG image (in byte[] form),
     ///   physical size, and orientation.
     /// @param name The name of the image (for identifying unique images upon detection)
     /// @param rawBytes The JPG image from which to create the reference image
-    /// @param physicalWidth
-    ///   The physical width of the image in meters. Be as accurate as possible, entering an
-    ///   incorrect physical size will result in detecting an anchor that’s the wrong distance
-    ///   from the camera.
+    /// @param physicalWidth The physical width of the image in meters.
     /// @param orientation The orientation of the image (Currently only Up is supported)
     /// @note Not supported in Editor.
     /// @note The ARReferenceImage will contain the full image buffer until it is destroyed.
@@ -111,7 +103,7 @@ namespace Niantic.ARDK.AR.ReferenceImage
       Orientation orientation = Orientation.Up
     )
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         var result =
           _NARReferenceImage_InitWithJPG
@@ -131,12 +123,12 @@ namespace Niantic.ARDK.AR.ReferenceImage
 
         return _NativeARReferenceImage._FromNativeHandle(result);
       }
-#pragma warning disable 0162
+      #pragma warning disable 0162
       else
       {
-        return new _SerializableARReferenceImage(name, Vector2.zero);
+        throw new InvalidOperationException("This operation is not supported on this platform.");
       }
-#pragma warning restore 0162
+      #pragma warning restore 0162
     }
 
     /// Creates a new reference image from a JPG file and the physical width
@@ -160,39 +152,32 @@ namespace Niantic.ARDK.AR.ReferenceImage
       Orientation orientation = Orientation.Up
     )
     {
-      byte[] rawBytes;
-      try
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
-        rawBytes = _ReadBytesFromFile(filePath);
+        var rawBytes = _ReadBytesFromFile(filePath);
+        var result =
+          _NARReferenceImage_InitWithJPG
+          (
+            name,
+            rawBytes,
+            (UInt64)rawBytes.Length,
+            (UInt32)orientation,
+            physicalWidth
+          );
 
-        if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+        if (result == IntPtr.Zero)
         {
-          var result =
-            _NARReferenceImage_InitWithJPG
-            (
-              name,
-              rawBytes,
-              (UInt64)rawBytes.Length,
-              (UInt32)orientation,
-              physicalWidth
-            );
-
-          if (result == IntPtr.Zero)
-          {
-            ARLog._Error("Failed to create reference image, returning null");
-            return null;
-          }
-
-          return _NativeARReferenceImage._FromNativeHandle(result);
+          ARLog._Error("Failed to create reference image, returning null");
+          return null;
         }
-      }
-      catch (Exception e)
-      {
-        ARLog._Error(e.Message);
-      }
 
+        return _NativeARReferenceImage._FromNativeHandle(result);
+      }
       #pragma warning disable 0162
-      return new _SerializableARReferenceImage(name, Vector2.zero);
+      else
+      {
+        throw new InvalidOperationException("This operation is not supported on this platform.");
+      }
       #pragma warning restore 0162
     }
 
@@ -228,7 +213,7 @@ namespace Niantic.ARDK.AR.ReferenceImage
       Orientation orientation = Orientation.Up
     )
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         if (orientation != Orientation.Up)
           throw new Exception("ARReferenceImage only supports Orientation.Up at the moment");
@@ -250,13 +235,12 @@ namespace Niantic.ARDK.AR.ReferenceImage
           ARReferenceImageCreateAsyncCallback
         );
       }
-#pragma warning disable 0162
+      #pragma warning disable 0162
       else
       {
-        var image = new _SerializableARReferenceImage(name, Vector2.zero);
-        completionHandler(image);
+        throw new InvalidOperationException("This operation is not supported on this platform.");
       }
-#pragma warning restore 0162
+      #pragma warning restore 0162
     }
 
 
@@ -285,7 +269,7 @@ namespace Niantic.ARDK.AR.ReferenceImage
       Orientation orientation = Orientation.Up
     )
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         _NARReferenceImage_CreateAsyncWithJPG
         (
@@ -298,13 +282,12 @@ namespace Niantic.ARDK.AR.ReferenceImage
           ARReferenceImageCreateAsyncCallback
         );
       }
-#pragma warning disable 0162
+      #pragma warning disable 0162
       else
       {
-        var image = new _SerializableARReferenceImage(name, Vector2.zero);
-        completionHandler.Invoke(image);
+        throw new InvalidOperationException("This operation is not supported on this platform.");
       }
-#pragma warning restore 0162
+      #pragma warning restore 0162
     }
 
     /// Creates a new reference image from a JPG file and the physical width in an async manner
@@ -330,36 +313,26 @@ namespace Niantic.ARDK.AR.ReferenceImage
       Orientation orientation = Orientation.Up
     )
     {
-      byte[] rawBytes;
-      try
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
-        rawBytes = _ReadBytesFromFile(filePath);
-
-        if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
-        {
-          _NARReferenceImage_CreateAsyncWithJPG
-          (
-            name,
-            rawBytes,
-            (UInt64)rawBytes.Length,
-            (UInt32)orientation,
-            physicalWidth,
-            SafeGCHandle.AllocAsIntPtr(completionHandler),
-            ARReferenceImageCreateAsyncCallback
-          );
-        }
-        #pragma warning disable 0162
-        else
-        {
-          var image = new _SerializableARReferenceImage(name, Vector2.zero);
-          completionHandler.Invoke(image);
-        }
+        var rawBytes = _ReadBytesFromFile(filePath);
+        _NARReferenceImage_CreateAsyncWithJPG
+        (
+          name,
+          rawBytes,
+          (UInt64)rawBytes.Length,
+          (UInt32)orientation,
+          physicalWidth,
+          SafeGCHandle.AllocAsIntPtr(completionHandler),
+          ARReferenceImageCreateAsyncCallback
+        );
+      }
+      #pragma warning disable 0162
+      else
+      {
+        throw new InvalidOperationException("This operation is not supported on this platform.");
+      }
       #pragma warning restore 0162
-      }
-      catch (Exception e)
-      {
-        ARLog._Error(e.Message);
-      }
     }
 
     internal static _SerializableARReferenceImage _AsSerializable(this IARReferenceImage source)
@@ -401,10 +374,10 @@ namespace Niantic.ARDK.AR.ReferenceImage
 #elif UNITY_IOS
       return System.IO.File.ReadAllBytes(filePath);
 #else
-      return null;
+      throw new NotSupportedException("The current platform is not supported.");
 #endif
     }
-
+    
     [MonoPInvokeCallback(typeof(_NARReferenceImage_CreateAsync_Callback))]
     private static void ARReferenceImageCreateAsyncCallback
     (

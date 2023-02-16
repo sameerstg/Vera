@@ -1,6 +1,6 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
-using Niantic.ARDK.AR;
+﻿using Niantic.ARDK.AR;
 using Niantic.ARDK.Extensions;
+using Niantic.ARDK.Helpers;
 
 using UnityEditor;
 
@@ -9,22 +9,19 @@ using UnityEngine;
 namespace ARDK.Editor.Extensions.Semantics
 {
   [CustomEditor(typeof(ARSemanticSegmentationManager))]
-  public class ARSemanticSegmentationManagerInspector
-    : UnityEditor.Editor
+  public class ARSemanticSegmentationManagerInspector: UnityEditor.Editor
   {
     private SerializedProperty _interpolationProperty;
     private SerializedProperty _interpolationPreferenceProperty;
     private SerializedProperty _suppressionChannelsProperty;
-    private SerializedProperty _confidenceChannelsProperty;
-
+    
     private void OnEnable()
     {
       _interpolationProperty = serializedObject.FindProperty("_interpolation");
       _interpolationPreferenceProperty = serializedObject.FindProperty("_interpolationPreference");
       _suppressionChannelsProperty = serializedObject.FindProperty("_depthSuppressionChannels");
-      _confidenceChannelsProperty = serializedObject.FindProperty("_confidenceChannels");
     }
-
+    
     public override void OnInspectorGUI()
     {
       base.OnInspectorGUI();
@@ -39,7 +36,7 @@ namespace ARDK.Editor.Extensions.Semantics
 
         _suppressionChannelsProperty.arraySize = EditorGUILayout.IntField
         (
-          "Number of Channels",
+          "Number Of Channels",
           _suppressionChannelsProperty.arraySize
         );
 
@@ -54,29 +51,7 @@ namespace ARDK.Editor.Extensions.Semantics
           if (((ARSemanticSegmentationManager)target).GetComponent<ARDepthManager>() == null)
             EditorGUILayout.HelpBox("Please add an AR Depth Manager component to enable this feature.", MessageType.Error);
         }
-
-        EditorGUI.indentLevel--;
-      }
-      
-      _confidenceChannelsProperty.isExpanded = EditorGUILayout.Foldout
-        (_confidenceChannelsProperty.isExpanded, "Persistent Confidences");
-      
-      if (_confidenceChannelsProperty.isExpanded)
-      {
-        EditorGUI.indentLevel++;
-
-        _confidenceChannelsProperty.arraySize = EditorGUILayout.IntField
-        (
-          "Number of Channels",
-          _confidenceChannelsProperty.arraySize
-        );
-
-        for (var i = 0; i < _confidenceChannelsProperty.arraySize; i++)
-        {
-          var item = _confidenceChannelsProperty.GetArrayElementAtIndex(i);
-          EditorGUILayout.PropertyField(item, new GUIContent($"Element {i}"));
-        }
-
+        
         EditorGUI.indentLevel--;
       }
 
@@ -86,7 +61,7 @@ namespace ARDK.Editor.Extensions.Semantics
       var semanticsManager = (ARSemanticSegmentationManager)target;
       var depthManager = semanticsManager.GetComponent<ARDepthManager>();
       var isDepthManagerPresentAndEnabled = depthManager != null && depthManager.enabled;
-
+      
       if (_interpolationProperty.enumValueIndex > 0)
       {
         if (!isDepthManagerPresentAndEnabled)
@@ -107,9 +82,9 @@ namespace ARDK.Editor.Extensions.Semantics
             ("Interpolation preference is driven by AR Depth Manager.", MessageType.Info);
         }
       }
-
+      
       serializedObject.ApplyModifiedProperties();
-
+      
       var isRenderingManagerPresent = semanticsManager.GetComponent<ARRenderingManager>() != null;
       if (!isRenderingManagerPresent)
       {

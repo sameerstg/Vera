@@ -1,4 +1,3 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
 using Unity.Collections;
 
 using UnityEngine;
@@ -8,13 +7,13 @@ namespace Niantic.ARDK.AR.Mesh
   /// A cube-shaped portion of the mesh of the environment.
   public class MeshBlock
   {
-    /// The last version that this block was updated at.
+    /// The version number of this specific block.
     public int Version { get; internal set; } = -1;
 
-    /// The last version of the mesh that this block was part of. Used to remove obsolete blocks. 
+    /// The version of the mesh that this block was last updated from.
     public int MeshVersion { get; internal set; } = -1;
 
-    /// The last version that this block had its collider updated at.
+    /// The last block-specific Version that this block had its collider updated at.
     /// Not set by the provider, besides to leave it at -1 initially. The consumer then uses this to
     /// track their own work.
     public int ColliderVersion { get; internal set; } = -1;

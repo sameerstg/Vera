@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Runtime.InteropServices;
@@ -11,7 +11,7 @@ using UnityEngine;
 namespace Niantic.ARDK.AR.Camera
 {
   internal sealed class _NativeARCamera:
-    IUpdatableARCamera
+    IARCamera
   {
     // tracking peerState + tracking peerState reason + image resolution + transform +
     // projection matrix + view matrix
@@ -20,7 +20,7 @@ namespace Niantic.ARDK.AR.Camera
 
     static _NativeARCamera()
     {
-      _Platform.Init();
+      Platform.Init();
     }
 
     // Directly release a native camera without generating an object or waiting for GC.
@@ -34,7 +34,6 @@ namespace Niantic.ARDK.AR.Camera
 
     internal static _NativeARCamera _FromNativeHandle(IntPtr nativeHandle, float worldScale)
     {
-      _NativeAccess.AssertNativeAccessValid();
       _StaticMemberValidator._CollectionIsEmptyWhenScopeEnds(() => _allCameras);
 
       var cppAddress = _NARCamera_GetCppAddress(nativeHandle);
@@ -131,7 +130,8 @@ namespace Niantic.ARDK.AR.Camera
       {
         var nativeImageResolution = new Int32[2];
 
-        _NARCamera_GetGPUImageResolution(_nativeHandle, nativeImageResolution);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARCamera_GetGPUImageResolution(_nativeHandle, nativeImageResolution);
 
         return
           new Resolution
@@ -148,7 +148,8 @@ namespace Niantic.ARDK.AR.Camera
       {
         var nativeImageResolution = new Int32[2];
 
-        _NARCamera_GetCPUImageResolution(_nativeHandle, nativeImageResolution);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARCamera_GetCPUImageResolution(_nativeHandle, nativeImageResolution);
 
         return
           new Resolution
@@ -165,7 +166,12 @@ namespace Niantic.ARDK.AR.Camera
       {
         var nativeIntrinsics = new float[16];
 
-        _NARCamera_GetGPUIntrinsics(_nativeHandle, nativeIntrinsics);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARCamera_GetGPUIntrinsics(_nativeHandle, nativeIntrinsics);
+        #pragma warning disable 0162
+        else
+          throw new IncorrectlyUsedNativeClassException();
+        #pragma warning restore 0162
 
         return
           new CameraIntrinsics
@@ -184,7 +190,12 @@ namespace Niantic.ARDK.AR.Camera
       {
         var nativeIntrinsics = new float[16];
 
-        _NARCamera_GetCPUIntrinsics(_nativeHandle, nativeIntrinsics);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARCamera_GetCPUIntrinsics(_nativeHandle, nativeIntrinsics);
+        #pragma warning disable 0162
+        else
+          throw new IncorrectlyUsedNativeClassException();
+        #pragma warning restore 0162
 
         return
           new CameraIntrinsics
@@ -203,9 +214,15 @@ namespace Niantic.ARDK.AR.Camera
       {
         var nativeTransform = new float[16];
 
-        _NARCamera_GetTransform(_nativeHandle, nativeTransform);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARCamera_GetTransform(_nativeHandle, nativeTransform);
+        #pragma warning disable 0162
+        else
+          throw new IncorrectlyUsedNativeClassException();
+        #pragma warning restore 0162
 
-        var transform = NARConversions.FromNARToUnity(_Convert.InternalToMatrix4x4(nativeTransform));
+        var transform = NARConversions.FromNARToUnity
+          (_Convert.InternalToMatrix4x4(nativeTransform));
 
         _Convert.ApplyScale(ref transform, WorldScale);
         return transform;
@@ -236,7 +253,13 @@ namespace Niantic.ARDK.AR.Camera
       {
         var nativeMatrix = new float[16];
 
-        _NARCamera_GetProjectionMatrix(_nativeHandle, nativeMatrix);
+        if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+          _NARCamera_GetProjectionMatrix(_nativeHandle, nativeMatrix);
+        #pragma warning disable 0162
+        else
+          throw new IncorrectlyUsedNativeClassException();
+        #pragma warning restore 0162
+
         return _Convert.InternalToMatrix4x4(nativeMatrix);
       }
     }
@@ -252,16 +275,23 @@ namespace Niantic.ARDK.AR.Camera
     {
       var nativeProjectionMatrix = new float[16];
 
-      _NARCamera_CalculateProjectionMatrix
-      (
-        _nativeHandle,
-        (UInt64)orientation,
-        viewportWidth,
-        viewportHeight,
-        nearClipPlane,
-        farClipPlane,
-        nativeProjectionMatrix
-      );
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+      {
+        _NARCamera_CalculateProjectionMatrix
+        (
+          _nativeHandle,
+          (UInt64)orientation,
+          viewportWidth,
+          viewportHeight,
+          nearClipPlane,
+          farClipPlane,
+          nativeProjectionMatrix
+        );
+      }
+      #pragma warning disable 0162
+      else
+          throw new IncorrectlyUsedNativeClassException();
+      #pragma warning restore 0162
 
       return _Convert.InternalToMatrix4x4(nativeProjectionMatrix);
     }
@@ -270,12 +300,19 @@ namespace Niantic.ARDK.AR.Camera
     {
       var nativeViewMatrix = new float[16];
 
-      _NARCamera_GetViewMatrix
-      (
-        _nativeHandle,
-        (UInt64)orientation,
-        nativeViewMatrix
-      );
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+      {
+        _NARCamera_GetViewMatrix
+        (
+          _nativeHandle,
+          (UInt64)orientation,
+          nativeViewMatrix
+        );
+      }
+      #pragma warning disable 0162
+      else
+        throw new IncorrectlyUsedNativeClassException();
+      #pragma warning restore 0162
 
       var viewMatrix = NARConversions.FromNARToUnity(_Convert.InternalToMatrix4x4(nativeViewMatrix));
       _Convert.ApplyScale(ref viewMatrix, WorldScale);
@@ -292,33 +329,25 @@ namespace Niantic.ARDK.AR.Camera
     {
       var outPoint = new float[2];
 
-      point = NARConversions.FromUnityToNAR(point);
-      var worldScale = WorldScale;
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+      {
+        point = NARConversions.FromUnityToNAR(point);
+        var worldScale = WorldScale;
 
-      _NARCamera_ProjectPoint
-      (
-        _nativeHandle,
-        point.x * (1 / worldScale),
-        point.y * (1 / worldScale),
-        point.z * (1 / worldScale),
-        (UInt64)orientation,
-        viewportWidth,
-        viewportHeight,
-        outPoint
-      );
+        _NARCamera_ProjectPoint
+        (
+          _nativeHandle,
+          point.x * (1 / worldScale),
+          point.y * (1 / worldScale),
+          point.z * (1 / worldScale),
+          (UInt64)orientation,
+          viewportWidth,
+          viewportHeight,
+          outPoint
+        );
+      }
 
       return new Vector2(outPoint[0], outPoint[1]);
-    }
-
-    public void UpdateDisplayGeometry(ScreenOrientation orientation, int viewportWidth, int viewportHeight)
-    {
-      _NARCamera_UpdateDisplayGeometry
-      (
-        _nativeHandle,
-        (UInt64)orientation,
-        viewportWidth,
-        viewportHeight
-      );
     }
 
     private bool _isTrackingStateLoaded;
@@ -330,7 +359,8 @@ namespace Niantic.ARDK.AR.Camera
 
       var nativeTrackingStates = new UInt64[2];
 
-      _NARCamera_GetTrackingStates(_nativeHandle, nativeTrackingStates);
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
+        _NARCamera_GetTrackingStates(_nativeHandle, nativeTrackingStates);
 
       _trackingState = (TrackingState)nativeTrackingStates[0];
       _trackingStateReason = (TrackingStateReason)nativeTrackingStates[1];
@@ -419,15 +449,6 @@ namespace Niantic.ARDK.AR.Camera
       Int32 viewportWidth,
       Int32 viewportHeight,
       float[] outPoint
-    );
-
-    [DllImport(_ARDKLibrary.libraryName)]
-    private static extern void _NARCamera_UpdateDisplayGeometry
-    (
-      IntPtr nativeHandle,
-      UInt64 interfaceOrientation,
-      Int32 viewportWidth,
-      Int32 viewportHeight
     );
   }
 }

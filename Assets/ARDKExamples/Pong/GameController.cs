@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using Niantic.ARDK.AR.ARSessionEventArgs;
 using Niantic.ARDK.AR.HitTest;
@@ -8,7 +8,6 @@ using Niantic.ARDK.Extensions;
 using Niantic.ARDK.Networking;
 using Niantic.ARDK.Networking.MultipeerNetworkingEventArgs;
 using Niantic.ARDK.Utilities;
-using Niantic.ARDK.Utilities.Input.Legacy;
 
 using UnityEngine;
 using UnityEngine.UI;
@@ -82,27 +81,22 @@ namespace Niantic.ARDKExamples.Pong
     {
       startGameButton.SetActive(false);
       ARNetworkingFactory.ARNetworkingInitialized += OnAnyARNetworkingSessionInitialized;
-      if (preloadManager.AreAllFeaturesDownloaded())
-        OnPreloadFinished(true);
-      else
-        preloadManager.ProgressUpdated += PreloadProgressUpdated;
+      preloadManager.ProgressUpdated += PreloadProgressUpdated;
     }
 
     private void PreloadProgressUpdated(FeaturePreloadManager.PreloadProgressUpdatedArgs args)
     {
       if (args.PreloadAttemptFinished)
       {
-        preloadManager.ProgressUpdated -= PreloadProgressUpdated;
-        OnPreloadFinished(args.FailedPreloads.Count == 0);
-      }
-    }
+        if (args.FailedPreloads.Count > 0)
+        {
+          Debug.LogError("Failed to download resources needed to run AR Multiplayer");
+          return;
+        }
 
-    private void OnPreloadFinished(bool success)
-    {
-      if (success)
         joinButton.interactable = true;
-      else
-        Debug.LogError("Failed to download resources needed to run AR Multiplayer");
+        preloadManager.ProgressUpdated -= PreloadProgressUpdated;
+      }
     }
 
     // When all players are ready, create the game. Only the host will have the option to call this

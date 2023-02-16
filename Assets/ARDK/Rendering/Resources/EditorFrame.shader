@@ -4,7 +4,6 @@
     {
         _texture ("Texture", 2D) = "black" {}
         _textureDepth ("Depth", 2D) = "black" {}
-        _textureFusedDepth ("Fused Depth", 2D) = "black" {}
         _textureDepthSuppressionMask ("Depth Suppresion Mask", 2D) = "black" {}
     }
     SubShader
@@ -35,7 +34,6 @@
 
             #pragma multi_compile_local __ DEPTH_ZWRITE
             #pragma multi_compile_local __ DEPTH_SUPPRESSION
-            #pragma multi_compile_local __ DEPTH_STABILIZATION
             #pragma multi_compile_local __ DEPTH_DEBUG
 
             #include "UnityCG.cginc"
@@ -55,9 +53,6 @@
 #if DEPTH_SUPPRESSION
                 float3 semantics_uv : TEXCOORD2;
 #endif
-#if DEPTH_STABILIZATION
-                float2 vertex_uv : TEXCOORD3;
-#endif
 #endif
             };
 
@@ -71,7 +66,6 @@
             // Plane samplers
             sampler2D _texture;
             sampler2D _textureDepth;
-            sampler2D _textureFusedDepth;
             sampler2D _textureDepthSuppressionMask;
 
             // Depth range used for scaling
@@ -101,9 +95,6 @@
                 o.depth_uv = mul(_depthTransform, float4(v.uv, 1.0f, 1.0f)).xyz;
 #if DEPTH_SUPPRESSION
                 o.semantics_uv = mul(_semanticsTransform, float4(v.uv, 1.0f, 1.0f)).xyz;
-#endif
-#if DEPTH_STABILIZATION
-                o.vertex_uv = v.uv;
 #endif
 #endif
                 return o;
@@ -135,38 +126,16 @@
                     // Scale depth in case it is normalized
                     // Note: If depth is not normalized, min and max should
                     // be 0 and 1 respectively to leave the value intact
-                    float eyeDepth = rawDepth * (_depthScaleMax - _depthScaleMin) + _depthScaleMin;
-                    
-#if DEPTH_STABILIZATION
-                    // Calculate non-linear frame depth
-                    float frameDepth = EyeDepthToNonLinear(eyeDepth, _ZBufferParams);
-                    
-                    // Sample non-linear fused depth
-                    float fusedDepth = tex2D(_textureFusedDepth, i.vertex_uv).r;
-
-                    // Linearize and compare
-                    float frameLinear = Linear01Depth(frameDepth);
-                    float fusedLinear = Linear01Depth(fusedDepth);
-                    bool useFrameDepth = fusedLinear == 1 || (abs(fusedLinear - frameLinear) / fusedLinear) >= 0.5f;
-
-                    // Write z-buffer
-                    out_depth = useFrameDepth ? frameDepth : fusedDepth;
-                    
-#else
+                    float scaledDepth = rawDepth * (_depthScaleMax - _depthScaleMin) + _depthScaleMin;
+                
                     // Convert to nonlinear and write to the zbuffer
-                    out_depth = EyeDepthToNonLinear(eyeDepth, _ZBufferParams);
-#endif
+                    out_depth = EyeDepthToNonLinear(scaledDepth, _ZBufferParams);
 #if DEPTH_DEBUG
                     // Write disparity to the color channels for debug purposes
                     const float MAX_VIEW_DISP = 4.0f;
-                    const float scaledDisparity = 1.0f / LinearEyeDepth(out_depth);
+                    const float scaledDisparity = 1.0/scaledDepth;
                     const float normDisparity = scaledDisparity/MAX_VIEW_DISP;
                     out_color = float4(normDisparity, normDisparity, normDisparity, 1.0f);
-
-#if DEPTH_STABILIZATION
-                    if (useFrameDepth)
-                        out_color = float4(normDisparity, normDisparity * 0.5f, normDisparity, 1.0f);
-#endif
 #endif
                 }
 #endif

@@ -1,7 +1,7 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
 using System.Collections.Generic;
 
 using Niantic.ARDK.Extensions;
+using Niantic.ARDK.Helpers;
 using Niantic.ARDK.Utilities;
 
 using UnityEngine;
@@ -14,9 +14,10 @@ namespace Niantic.ARDK.Rendering
   ///   - A list of the render features that are actually need to be enabled
   /// A render feature is just a shader keyword that triggers the compilation
   /// of additional code to the shader that renders the background.
-  public abstract class ARRenderFeatureProvider :
-    ARConfigChanger,
-    IRenderFeatureProvider
+  public abstract class ARRenderFeatureProvider : 
+    ARConfigChanger, 
+    IRenderFeatureProvider,
+    ITargetableRenderFeatureProvider
   {
     private event ArdkEventHandler<RenderFeaturesChangedArgs> _activeFeaturesChanged;
 
@@ -38,9 +39,9 @@ namespace Niantic.ARDK.Rendering
     /// A set of all render features this provider may enable or disable.
     public ISet<string> Features
     {
-      get => _features ??= OnAcquireFeatureSet();
+      get => _features ?? (_features = OnAcquireFeatureSet());
     }
-
+    
     private RenderTarget? _renderTarget;
 
     /// The active render target of this provider
@@ -55,16 +56,16 @@ namespace Niantic.ARDK.Rendering
           {
             // Reset target
             _renderTarget = null;
-            OnRenderTargetChanged(null);
+            OnRenderTargetChanged(null);  
           }
-
+          
           return;
         }
-
+        
         // Make sure the new target is different
         if (_renderTarget.HasValue && _renderTarget.Value.Equals(value.Value))
           return;
-
+        
         _renderTarget = value;
         OnRenderTargetChanged(value);
       }
@@ -75,7 +76,7 @@ namespace Niantic.ARDK.Rendering
     protected override void EnableFeaturesImpl()
     {
       base.EnableFeaturesImpl();
-
+      
       // Propagate AR session config changes
       RaiseConfigurationChanged();
 
@@ -89,7 +90,7 @@ namespace Niantic.ARDK.Rendering
     protected override void DisableFeaturesImpl()
     {
       base.DisableFeaturesImpl();
-
+      
       // Propagate AR session config changes
       RaiseConfigurationChanged();
 
@@ -108,17 +109,17 @@ namespace Niantic.ARDK.Rendering
       // Propagate active render features
       _activeFeaturesChanged?.Invoke(new RenderFeaturesChangedArgs(OnEvaluateConfiguration()));
     }
-
+    
     /// Invoked when this component is asked about the render features
     /// it is may be responsible for.
     /// @note: The implementation needs to include all features that is
     /// possible to manipulate with this component.
     protected abstract HashSet<string> OnAcquireFeatureSet();
-
+    
     /// Invoked when it is time to calculate the actual features
     /// that this component currently manages.
     protected abstract RenderFeatureConfiguration OnEvaluateConfiguration();
-
+    
     /// Invoked when the active render target has changed for this feature provider
     /// @param target The new render target. If this is null, the provider should
     ///               set its target to the default option.

@@ -1,30 +1,26 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using Niantic.ARDK.AR;
 using Niantic.ARDK.AR.ARSessionEventArgs;
+using Niantic.ARDK.AR.Frame;
 using Niantic.ARDK.Utilities;
-using Niantic.ARDK.Utilities.Editor;
 
 using UnityEngine;
-using UnityEngine.Serialization;
 
+/// @namespace Niantic.ARDK.Extensions
+/// @brief Premade helper scripts that can be easily added to a Unity project and add
+///   AR/multipeer functionality
 namespace Niantic.ARDK.Extensions
 {
-  /// A helper component to automatically position the scene rendering AR content and transform its output
+  /// <summary>
+  /// A helper class to automatically position an AR camera and transform its output
+  /// </summary>
   public class ARCameraPositionHelper: MonoBehaviour
   {
-    [FormerlySerializedAs("Camera")]
-    [SerializeField]
-    [_Autofill]
-    [Tooltip("The scene camera used to render AR content.")]
-    private Camera _camera;
+    /// The Unity Camera in the scene doing the rendering.
+    public Camera Camera;
 
-    /// Returns a reference to the scene camera used to render AR content, if present.
-    public Camera Camera
-    {
-      get => _camera;
-      set => _camera = value;
-    }
+    private ARCameraFeed _cameraFeed;
 
     private IARSession _session;
 

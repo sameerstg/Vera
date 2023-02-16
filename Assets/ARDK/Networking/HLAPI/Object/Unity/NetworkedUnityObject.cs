@@ -1,14 +1,14 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 using Niantic.ARDK.External;
+using Niantic.ARDK.Internals.EditorUtilities;
 using Niantic.ARDK.Networking.HLAPI.Authority;
 using Niantic.ARDK.Networking.HLAPI.Routing;
 using Niantic.ARDK.Networking.MultipeerNetworkingEventArgs;
-using Niantic.ARDK.Utilities.Editor;
 using Niantic.ARDK.Utilities.Logging;
 
 using UnityEngine;
@@ -25,44 +25,46 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
   /// An object with this component needs to stay alive for at least one frame after Awake,
   /// or else CallbackQueue will have a null reference to the object.
   /// </summary>
+  // Todo [awang]: wrap CallbackQueue execute in a try/catch
   [DefaultExecutionOrder(Int32.MinValue)]
   [RequireComponent(typeof(AuthBehaviour))]
   public sealed class NetworkedUnityObject:
     MonoBehaviour, 
     ISerializationCallbackReceiver
   {
-    /// <summary>   
+    /// <summary>
     /// An Id that represents the instance of the object, shared between all peers in the session
     /// </summary>
     [SerializeField]
-    private long _rawId;
+    private long _rawId = 0L;
 
     /// <summary>
     /// An Id that represents the prefab, shared between all builds of the scene
     /// </summary>
     [SerializeField]
-    private long _prefabId;
+    private long _prefabId = 0L;
 
     /// <summary>
     /// The peers that have the right to network destroy the object
     /// </summary>
     [EnumFlag]
     [SerializeField]
-    private DestructionAuthorizedPeerOptions _destructionAuthorizedPeers = DestructionAuthorizedPeerOptions.Anyone;
+    private DestructionAuthorizedPeerOptions _destructionAuthorizedPeers =
+      DestructionAuthorizedPeerOptions.Anyone;
 
     /// <summary>
     /// If the only peer with destructor rights leaves the session without destroying the object,
     ///   clean it up locally
     /// </summary>
     [SerializeField]
-    private bool _destroyIfDestroyerLeaves;
+    private bool _destroyIfDestroyerLeaves = false;
 
     /// <summary>
     /// The AuthBehaviour that handles authority for each instance of this object
     /// </summary>
     [_Autofill]
     [SerializeField]
-    private AuthBehaviour _auth;
+    private AuthBehaviour _auth = null;
 
     /// <summary>
     /// The default NetworkedBehaviour for this object
@@ -97,11 +99,13 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
       /// All peers can network destroy this object
       Anyone = ~None,
     }
-    
-    private INetworkGroup _group;
-    
-    private static System.Random _random = new System.Random();
 
+    /// <summary>
+    /// Counts the number of currently opened channels on this object
+    /// </summary>
+    private ulong _channelIdCounter;
+
+    private INetworkGroup _group;
 
     private IHlapiSession Session
     {
@@ -126,7 +130,10 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
     /// </summary>
     public bool WasSpawnedByMe
     {
-      get => SpawningPeer != null && SpawningPeer.Equals(Networking.Self);
+      get
+      {
+        return SpawningPeer != null && SpawningPeer.Equals(Networking.Self);
+      }
     }
 
     /// <summary>
@@ -144,8 +151,8 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
     /// </summary>
     public NetworkId Id
     {
-      get => (NetworkId)(ulong)_rawId;
-      internal set => _rawId = (long)(ulong)value;
+      get { return (NetworkId)(ulong)_rawId; }
+      internal set { _rawId = (long)(ulong)value; }
     }
 
     /// <summary>
@@ -153,7 +160,7 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
     /// </summary>
     public NetworkId PrefabId
     {
-      get => (NetworkId)(ulong)_prefabId;
+      get { return (NetworkId)(ulong)_prefabId; }
     }
 
     /// <summary>
@@ -161,7 +168,7 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
     /// </summary>
     public AuthBehaviour Auth
     {
-      get => _auth;
+      get { return _auth; }
     }
 
     /// <summary>
@@ -169,7 +176,7 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
     /// </summary>
     public NetworkedBehaviour DefaultBehaviour
     {
-      get => _defaultBehaviour;
+      get { return _defaultBehaviour; }
     }
 
     /// <summary>
@@ -177,7 +184,13 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
     /// </summary>
     public INetworkGroup Group
     {
-      get => _group ?? (_group = Session.CreateAndRegisterGroup(Id));
+      get
+      {
+        if (_group == null)
+          _group = Session.CreateAndRegisterGroup(Id);
+
+        return _group;
+      }
     }
 
     /// <summary>
@@ -191,8 +204,8 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
         false,
         Id.RawId
       );
-      
-      _group ??= Session.CreateAndRegisterGroup(Id);
+      if (_group == null)
+        _group = Session.CreateAndRegisterGroup(Id);
 
       var initializerList = new List<KeyValuePair<int, Action>>();
 
@@ -207,14 +220,15 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
 
       foreach (var behaviour in _behaviours)
       {
-        var order = behaviour.Initialize(out Action initializer);
+        Action initializer;
+        var order = behaviour.Initialize(out initializer);
         initializerList.Add(new KeyValuePair<int, Action>(order, initializer));
       }
 
-      initializerList.Sort((kvp1, kvp2) => kvp1.Key.CompareTo(kvp2.Key));
+      initializerList.Sort((a, b) => a.Key.CompareTo(b.Key));
 
-      foreach (var initKvp in initializerList)
-        initKvp.Value.Invoke();
+      foreach (var init in initializerList)
+        init.Value.Invoke();
     }
 
     /// <summary>
@@ -273,6 +287,85 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
 
       return IsDestructionAuthorizedPeer(peer);
     }
+
+#if UNITY_EDITOR && !UNITY_2018_3_OR_NEWER
+    private void OnValidate()
+    {
+      if (!Application.isEditor || Application.isPlaying)
+        return;
+
+      if (PrefabUtility.GetPrefabType(gameObject) == PrefabType.Prefab)
+        OnValidateAsPrefab();
+      else
+        OnValidateAsSceneObject();
+    }
+
+    internal void RefreshBehaviourList()
+    {
+      _behaviours = GetComponents<NetworkedBehaviour>();
+    }
+
+    private void GenerateNewId()
+    {
+      var random = new System.Random();
+      var longBytes = new byte[8];
+      random.NextBytes(longBytes);
+      _rawId = BitConverter.ToInt64(longBytes, 0);
+    }
+
+    private void OnValidateAsSceneObject()
+    {
+      var prefabd = PrefabUtility.GetPrefabParent(gameObject);
+      var prefab = (GameObject)prefabd;
+
+      if (prefab && PrefabUtility.GetPrefabType(prefab) == PrefabType.Prefab)
+      {
+        var prefabRepUnityObj = prefab.GetComponent<NetworkedUnityObject>();
+
+        if (prefabRepUnityObj)
+        {
+          _prefabId = prefabRepUnityObj._prefabId;
+
+          if (_rawId == prefabRepUnityObj._rawId)
+            _rawId = 0;
+        }
+      }
+
+      if (_rawId == 0)
+        GenerateNewId();
+    }
+
+    private void OnValidateAsPrefab()
+    {
+      // When there is no prefab id, update it and all prefab children.
+      if (_prefabId == 0)
+      {
+        GenerateNewId();
+        _prefabId = _rawId;
+
+        // All objects that use this prefab need to change there prefab id to this prefabs id.
+        foreach (var repUnityObject in FindObjectsOfType<NetworkedUnityObject>())
+        {
+          var prefab = (GameObject)PrefabUtility.GetPrefabObject(repUnityObject.gameObject);
+
+          if (prefab)
+          {
+            var prefabRepUnityObject = prefab.GetComponent<NetworkedUnityObject>();
+
+            if (prefabRepUnityObject == this)
+            {
+              repUnityObject._prefabId = _prefabId;
+
+              if (repUnityObject._rawId == _rawId)
+                OnValidate();
+            }
+          }
+        }
+      }
+
+      _rawId = _prefabId;
+    }
+#endif
 
     private void Start()
     {
@@ -368,11 +461,10 @@ namespace Niantic.ARDK.Networking.HLAPI.Object.Unity
     /// <summary>
     /// Generates a randomized Long to be used for an Id.
     /// </summary>
-    internal static long GenerateId() 
-    {
+    internal static long GenerateId() {
+      var random = new System.Random();
       var longBytes = new byte[8];
-      _random.NextBytes(longBytes);
-      
+      random.NextBytes(longBytes);
       return BitConverter.ToInt64(longBytes, 0);
     }
   }

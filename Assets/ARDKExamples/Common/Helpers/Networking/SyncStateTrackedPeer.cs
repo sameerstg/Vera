@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System.Collections.Generic;
 
@@ -30,17 +30,19 @@ namespace Niantic.ARDKExamples.Helpers
 
     private bool _isSelf;
 
-    private readonly Dictionary<PeerState, Color> _indicatorColors = new Dictionary<PeerState, Color>
-    {
-      { PeerState.Unknown, Color.white },
-      { PeerState.Initializing, Color.yellow },
-      { PeerState.WaitingForLocalizationData, Color.cyan },
-      { PeerState.Localizing, Color.blue },
-      { PeerState.Stabilizing, Color.magenta },
-      { PeerState.Stable, Color.green },
-      { PeerState.Limited, Color.magenta },
-      { PeerState.Failed, Color.red }
-    };
+    private readonly Dictionary<PeerState, Color> _indicatorColors =
+      new Dictionary<PeerState, Color>()
+      {
+        { PeerState.Unknown, Color.white },
+        { PeerState.Initializing, Color.yellow },
+        { PeerState.WaitingForLocalizationData, Color.cyan },
+        { PeerState.Localizing, Color.blue },
+        { PeerState.Stabilizing, Color.magenta },
+        { PeerState.Stable, Color.green },
+        { PeerState.Limited, Color.magenta },
+        { PeerState.Failed, Color.red }
+      };
+
     private IARNetworking _arNetworking = null;
 
     private void Awake()

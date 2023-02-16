@@ -1,4 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 
@@ -16,8 +16,8 @@ namespace Niantic.ARDK.AR.Anchors
       var anchorType = source.AnchorType;
       switch (anchorType)
       {
-        case AnchorType.Basic:
-          return _AsSerializableBasic(source);
+        case AnchorType.Base:
+          return _AsSerializableBase(source);
 
         case AnchorType.Image:
           return _AsSerializableImage((IARImageAnchor)source);
@@ -29,13 +29,14 @@ namespace Niantic.ARDK.AR.Anchors
       throw new ArgumentException("Unknown anchorType: " + anchorType);
     }
 
-    internal static _SerializableARBasicAnchor _AsSerializableBasic(this IARAnchor source)
+    internal static _SerializableARBaseAnchor _AsSerializableBase(this IARAnchor source)
     {
-      if (source is _SerializableARBasicAnchor possibleResult)
+      var possibleResult = source as _SerializableARBaseAnchor;
+      if (possibleResult != null)
         return possibleResult;
 
       var result =
-        new _SerializableARBasicAnchor
+        new _SerializableARBaseAnchor
         (
           source.Transform,
           source.Identifier
@@ -46,7 +47,8 @@ namespace Niantic.ARDK.AR.Anchors
 
     internal static _SerializableARImageAnchor _AsSerializableImage(this IARImageAnchor source)
     {
-      if (source is _SerializableARImageAnchor possibleResult)
+      var possibleResult = source as _SerializableARImageAnchor;
+      if (possibleResult != null)
         return possibleResult;
 
       var result =
@@ -62,7 +64,8 @@ namespace Niantic.ARDK.AR.Anchors
 
     internal static _SerializableARPlaneAnchor _AsSerializablePlane(this IARPlaneAnchor source)
     {
-      if (source is _SerializableARPlaneAnchor possibleResult)
+      var possibleResult = source as _SerializableARPlaneAnchor;
+      if (possibleResult != null)
         return possibleResult;
 
       var result =

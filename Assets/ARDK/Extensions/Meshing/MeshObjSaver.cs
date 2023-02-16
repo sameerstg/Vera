@@ -1,5 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
-using System;
+﻿using System;
 using System.IO;
 
 using Niantic.ARDK.AR;
@@ -11,7 +10,7 @@ using UnityEngine;
 using Unity.Collections;
 using Unity.Collections.LowLevel.Unsafe;
 
-namespace Niantic.ARDK.Extensions.Meshing
+namespace ARDK.Assets.ARDK.Extensions.Meshing
 {
     public class MeshObjSaver: MonoBehaviour
     {

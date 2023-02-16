@@ -1,5 +1,4 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
-using Niantic.ARDK.AR;
+﻿using Niantic.ARDK.AR;
 
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -44,8 +43,10 @@ namespace Niantic.ARDK.Rendering
 
         protected override GraphicsFence? OnConfigurePipeline
         (
-            RenderTarget target, 
-            Material renderMaterial
+          RenderTarget target,
+          Resolution targetResolution,
+          Resolution sourceResolution,
+          Material renderMaterial
         )
         {
             _commandBuffer = new CommandBuffer

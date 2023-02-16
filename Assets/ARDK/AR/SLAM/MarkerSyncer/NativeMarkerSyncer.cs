@@ -1,11 +1,10 @@
-// Copyright 2022 Niantic, Inc. All Rights Reserved.
+// Copyright 2021 Niantic, Inc. All Rights Reserved.
 
 using System;
 using System.Runtime.InteropServices;
 
 using Niantic.ARDK.AR.Camera;
 using Niantic.ARDK.Internals;
-using Niantic.ARDK.Utilities;
 using Niantic.ARDK.Utilities.Logging;
 
 using UnityEngine;
@@ -27,7 +26,7 @@ namespace Niantic.ARDK.AR.SLAM
     public NativeMarkerSyncer(Guid stageIdentifier)
     {
       StageIdentifier = stageIdentifier;
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
         _nativeHandle = _NARMarkerManager_Init(StageIdentifier.ToByteArray());
     }
 
@@ -47,7 +46,7 @@ namespace Niantic.ARDK.AR.SLAM
 
     private void _ReleaseUnmanagedResources()
     {
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         if (_nativeHandle != IntPtr.Zero)
         {
@@ -67,7 +66,7 @@ namespace Niantic.ARDK.AR.SLAM
 
       var markerPointsFlattened = FlattenVectorArray(markerPointLocations);
 
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         ARLog._Debug("Sending marker information to native marker manager");
         _NARMarkerManager_SendMarkerInformation
@@ -112,7 +111,7 @@ namespace Niantic.ARDK.AR.SLAM
       // Input point calculations
       var imagePointsFlattened = FlattenVectorArray(scannedPointPositions);
 
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         ARLog._Debug("Sending stationary marker to be evaluated by native marker manager");
         var nativeCamera = (_NativeARCamera)arCamera;
@@ -145,7 +144,7 @@ namespace Niantic.ARDK.AR.SLAM
 
       var imagePointsFlattened = FlattenVectorArray(scannedPointLocations);
 
-      if (_NativeAccess.Mode == _NativeAccess.ModeType.Native)
+      if (NativeAccess.Mode == NativeAccess.ModeType.Native)
       {
         ARLog._Debug("Sending device marker to be evaluated by native marker manager");
         var nativeCamera = (_NativeARCamera)arCamera;
